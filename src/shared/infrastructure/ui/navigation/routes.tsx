@@ -1,67 +1,36 @@
+// ... (otras importaciones)
 import React from "react";
-import { Navigate } from "react-router-dom";
-
-import { LoginPage } from "../../../../core/auth/infrastructure/ui/LoginPage";
 import { BusinessesPage } from "../../../../core/businesses/infrastructure/ui/BusinessesPage";
 import { BusinessForm } from "../../../../core/businesses/infrastructure/ui/BusinessForm";
 import { LearningPathPage } from "../../../../core/learning-path/infrastructure/ui/pages/LearningPathPage";
+// ... (layout si lo usas)
 
 export const Routes = {
-  home: {
-    path: "",
-    layout: React.Fragment,
-    routes: {
-      redirect: {
-        title: "",
-        path: "",
-        element: () => <Navigate to="/login" />,
-      },
-    },
-  },
-  auth: {
-    path: "/login",
-    layout: React.Fragment,
-    routes: {
-      login: {
-        title: "",
-        path: "",
-        element: LoginPage,
-      },
-    },
-  },
+  // ... (sección 'home' y 'auth' sin cambios)
+
   businesses: {
     path: "/businesses",
-    layout: React.Fragment,
+    layout: React.Fragment, // O tu DashboardLayout
     routes: {
       businessesList: {
-        title: "",
-        path: "",
+        title: "Lista de Negocios",
+        path: "", // Se renderiza en /businesses
         element: BusinessesPage,
       },
       businessesForm: {
-        title: "",
-        path: "new",
+        title: "Formulario de Negocio",
+        path: "new", // Se renderiza en /businesses/new
         element: BusinessForm,
+      },
+      // 👇 AÑADE ESTA NUEVA RUTA ANIDADA AQUÍ
+      learningPath: {
+        title: "Camino de Aprendizaje",
+        // La ruta ahora contiene un parámetro dinámico ':businessId'
+        path: ":businessId/learning-path", 
+        element: LearningPathPage,
       },
     },
   },
 
-  learningPath: {
-    // La URL base para esta sección
-    path: "/learning-path",
-    
-    // Por ahora usamos un Fragmento, pero podría ser un Layout de Dashboard
-    layout: React.Fragment,
-    
-    // Las páginas específicas dentro de esta sección
-    routes: {
-      main: {
-        title: "Camino de Aprendizaje",
-        // La ruta es vacía porque queremos que esta página se muestre
-        // directamente en /learning-path
-        path: "",
-        element: LearningPathPage, // El componente de página que importamos
-      },
-    }
-  }
+  
 };

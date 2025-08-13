@@ -14,10 +14,14 @@ interface Props {
  */
 export const LearningPathGrid: React.FC<Props> = ({ modules }) => {
   return (
-    <div className="grid grid-cols-3 gap-8">
-      {modules.map((module) => (
-        <ModuleCard key={module.id} module={module} />
-      ))}
+    <div className="grid-container max-w-4xl mx-auto">
+      {/* Ajustamos el gap para dar un poco más de espacio a las tarjetas más anchas */}
+      <div className="grid grid-cols-3 gap-6 relative">
+        {modules.map((module) => (
+          <ModuleCard key={module.id} module={module} />
+        ))}
+      </div>
+      
     </div>
   );
 };

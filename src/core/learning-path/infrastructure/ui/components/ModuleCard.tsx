@@ -16,18 +16,36 @@ interface Props {
  * Ahora usa `module.name` en lugar de `module.title` para mostrar el nombre.
  */
 export const ModuleCard: React.FC<Props> = ({ module }) => {
-  const config = {
-    [ModuleStatus.InProgress]: { bgColor: 'bg-blue-500', textColor: 'text-white', icon: <FaClock size={24} /> },
-    [ModuleStatus.Locked]: { bgColor: 'bg-gray-400', textColor: 'text-gray-800', icon: <FaLock size={24} /> },
-    [ModuleStatus.Completed]: { bgColor: 'bg-green-500', textColor: 'text-white', icon: null },
+   // Objeto de configuración para definir el estilo y el contenido según el estado
+  const statusConfig = {
+    [ModuleStatus.InProgress]: {
+      bgColor: 'bg-blue-500',
+      content: <div className="text-4xl mb-2">🎯</div> // Div para estado "En Progreso"
+    },
+    [ModuleStatus.Locked]: {
+      bgColor: 'bg-gray-400',
+      content: <div className="text-4xl mb-2">🔒</div> // Div para estado "Bloqueado"
+    },
+    [ModuleStatus.Completed]: {
+      bgColor: 'bg-green-500',
+      content: <div className="text-4xl mb-2">✅</div> // Div para estado "Completado"
+    },
   };
 
-  const { bgColor, textColor, icon } = config[module.status];
+  // Selecciona la configuración correcta basada en el estado del módulo
+  const { bgColor, content } = statusConfig[module.status];
 
   return (
-    <div className={`flex flex-col items-center justify-center w-36 h-36 rounded-lg shadow-md p-4 ${bgColor} ${textColor} transition-transform transform hover:scale-105`}>
-      <div className="mb-2 h-6">{icon}</div>
-      <span className="font-semibold text-center">{module.name}</span>
+    <div className={`flex flex-col items-center justify-center w-36 h-36 rounded-xl shadow-md p-4 ${bgColor} text-white transition-transform transform hover:scale-105`}>
+      
+      {/* Renderiza el div correspondiente al estado del módulo */}
+      {content}
+      
+      {/* Muestra el nombre del módulo */}
+      <h3 className="font-semibold text-lg text-center">{module.name}</h3>
     </div>
   );
+
+
+  
 };

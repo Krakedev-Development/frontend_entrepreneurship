@@ -1,20 +1,22 @@
 import { FaMapMarkerAlt, FaArrowRight } from "react-icons/fa";
 // import { useNavigate } from "react-router-dom";
 import type { Business } from "../../domain/entities/Business";
+import { useNavigate } from "react-router-dom";
 
 interface BusinessCardProps {
   business: Business;
 }
-
+ 
 export function BusinessCard({ business }: BusinessCardProps) {
-  // const navigate = useNavigate();
+  const navigate = useNavigate();
 
   // Función para manejar el clic en el botón de edición/continuar
   const handleContinue = () => {
     // Aquí puedes navegar a la pantalla específica del progreso de este negocio
     // Por ahora, lo dejamos como un log.
     console.log(`Continuar con el negocio: ${business.name}`);
-    // navigate(`/businesses/${business.id}/progress`); // Ejemplo de ruta futura
+
+      navigate(`/businesses/1/learning-path`);
   };
 
   return (
