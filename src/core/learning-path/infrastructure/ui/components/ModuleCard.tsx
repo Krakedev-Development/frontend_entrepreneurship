@@ -2,20 +2,24 @@
 
 // Fichero: src/core/learning-path/ui/components/ModuleCard.tsx
 import React from 'react';
-import { FaLock, FaClock } from 'react-icons/fa';
 import type { Module } from "../../../domain/entities/Module";
 import { ModuleStatus } from "../../../domain/entities/ModuleStatus";
+//import { useNavigate } from 'react-router-dom';
 
 
 interface Props {
   module: Module;
+//  businessId: string; // ID del negocio para la navegación
 }
 
 /**
  * Componente de tarjeta de módulo.
  * Ahora usa `module.name` en lugar de `module.title` para mostrar el nombre.
  */
-export const ModuleCard: React.FC<Props> = ({ module }) => {
+export const ModuleCard: React.FC<Props> = ({ module, 
+  /** businessId*/
+   }) => {
+//  const navigate = useNavigate();
    // Objeto de configuración para definir el estilo y el contenido según el estado
   const statusConfig = {
     [ModuleStatus.InProgress]: {
@@ -31,12 +35,25 @@ export const ModuleCard: React.FC<Props> = ({ module }) => {
       content: <div className="text-4xl mb-2">✅</div> // Div para estado "Completado"
     },
   };
+ // 4. Crear la función que maneja el clic
+  const handleCardClick = () => {
+    // Si el módulo está bloqueado, no hacemos nada.
+    if (module.status === ModuleStatus.Locked) {
+      return;
+    }
+    // Navegamos a la nueva ruta con los IDs necesarios
+   // navigate(`/businesses/${businessId}/modules/${module.id}`);
+  };
+
 
   // Selecciona la configuración correcta basada en el estado del módulo
   const { bgColor, content } = statusConfig[module.status];
 
   return (
-    <div className={`flex flex-col items-center justify-center w-36 h-36 rounded-xl shadow-md p-4 ${bgColor} text-white transition-transform transform hover:scale-105`}>
+    <div 
+    onClick={handleCardClick}
+    
+    className={`flex flex-col items-center justify-center w-36 h-36 rounded-xl shadow-md p-4 ${bgColor} text-white transition-transform transform hover:scale-105`}>
       
       {/* Renderiza el div correspondiente al estado del módulo */}
       {content}
