@@ -15,7 +15,7 @@ const mockModuleContent: ModuleContent = {
 export class ModuleRepositoryMock implements IModuleRepository {
   async getModuleContentById(id: number): Promise<ModuleContent> {
     console.log(`Adaptador de Salida (Mock): Obteniendo contenido del modulo ${id}`);
-    
+
     // Simulamos una demora de red
     return new Promise((resolve) => {
       setTimeout(() => {

@@ -22,7 +22,8 @@
   --color-primary-200: #bfdbfe;
   --color-primary-300: #93c5fd;
   --color-primary-400: #60a5fa;
-  --color-primary-500: #3b82f6; /* Color principal */
+  --color-primary-500: #3b82f6;
+  /* Color principal */
   --color-primary-600: #2563eb;
   --color-primary-700: #1d4ed8;
   --color-primary-800: #1e40af;
@@ -34,15 +35,24 @@
   --color-secondary-200: #bbf7d0;
   --color-secondary-300: #86efac;
   --color-secondary-400: #4ade80;
-  --color-secondary-500: #22c55e; /* Color secundario */
+  --color-secondary-500: #22c55e;
+  /* Color secundario */
   --color-secondary-600: #16a34a;
   --color-secondary-700: #15803d;
   --color-secondary-800: #166534;
   --color-secondary-900: #14532d;
 
   /* Accent - Amarillo/Naranja */
+  --color-accent-50: #fefce8;
+  --color-accent-100: #fef9c3;
+  --color-accent-200: #fef08a;
+  --color-accent-300: #fde047;
   --color-accent-400: #facc15;
-  --color-accent-500: #eab308; /* Color de acento */
+  --color-accent-500: #eab308;
+  --color-accent-600: #ca8a04;
+  --color-accent-700: #a16207;
+  --color-accent-800: #854d0e;
+  --color-accent-900: #713f12; /* Color de acento */
 
   /* Neutral - Grises */
   --color-neutral-50: #f9fafb;
@@ -66,13 +76,18 @@
   --font-family-brand: "Inter", system-ui, -apple-system, sans-serif;
 
   /* === ESPACIADO (Opcional, si quieres referenciarlos en tailwind.config) === */
-  --spacing-sm: 0.5rem; /* 8px */
-  --spacing-md: 1rem; /* 16px */
-  --spacing-lg: 1.5rem; /* 24px */
-  --spacing-xl: 2rem; /* 32px */
+  --spacing-sm: 0.5rem;
+  /* 8px */
+  --spacing-md: 1rem;
+  /* 16px */
+  --spacing-lg: 1.5rem;
+  /* 24px */
+  --spacing-xl: 2rem;
+  /* 32px */
 
   /* === BORDES Y SOMBRAS === */
-  --border-radius-brand: 0.75rem; /* 12px */
+  --border-radius-brand: 0.75rem;
+  /* 12px */
 
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1),
     0 2px 4px -1px rgba(0, 0, 0, 0.06);
@@ -99,6 +114,7 @@ body {
     opacity: 0;
     transform: translateY(10px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -122,14 +138,17 @@ body {
 }
 
 .path-locked {
-  background: hsl(219, 11%, 65%); /* Tailwind's gray-400 */
+  background: hsl(219, 11%, 65%);
+  /* Tailwind's gray-400 */
 }
 
 @keyframes pulse-path {
+
   0%,
   100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.6;
   }
@@ -173,6 +192,7 @@ body {
   border-radius: 15px;
   background: #000;
 }
+
 .video-container iframe {
   position: absolute;
   top: 0;
@@ -181,14 +201,17 @@ body {
   height: 100%;
   border: none;
 }
+
 .ai-analysis {
   background: linear-gradient(135deg, #e0f7fa, #bbdefb);
 }
+
 .nav-buttons {
   display: flex;
   justify-content: space-between;
   margin-top: 20px;
 }
+
 .category-title {
   border-bottom: 2px solid #4361ee;
   padding-bottom: 5px;

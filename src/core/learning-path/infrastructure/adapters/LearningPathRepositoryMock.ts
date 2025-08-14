@@ -36,7 +36,7 @@ export class LearningPathRepositoryMock implements ILearningPathRepository {
                 // const pathModulesDTO = this.mockData.filter(m => m.id_aprendizaje === learningPathId);
                 const domainModules = this.mockData.map(this.toDomain);
                 resolve(domainModules);
-            }, 500);
+            }, 100);
         });
     }
 }

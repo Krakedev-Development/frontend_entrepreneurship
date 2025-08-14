@@ -3,6 +3,6 @@ export interface FinancialRecord {
     businessId: number;
     moduleId: number;
     name: string;
-    amount: number;
-    createdAt: Date;
+    amount: string;
+    createdAt: string;
 }
