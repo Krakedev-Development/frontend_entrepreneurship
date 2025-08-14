@@ -30,11 +30,11 @@ export class LearningPathRepositoryMock implements ILearningPathRepository {
         };
     }
     async getLearningPath(learningPathId: number): Promise<Module[]> {
-        console.log("Buscando camino de aprendizaje con ID: ${learningPathId}");
+        console.log(`Buscando camino de aprendizaje con ID: ${learningPathId}`);
         return new Promise((resolve) => {
             setTimeout(() => {
-                const pathModulesDTO = this.mockData.filter(m => m.id_aprendizaje === learningPathId);
-                const domainModules = pathModulesDTO.map(this.toDomain);
+                // const pathModulesDTO = this.mockData.filter(m => m.id_aprendizaje === learningPathId);
+                const domainModules = this.mockData.map(this.toDomain);
                 resolve(domainModules);
             }, 500);
         });

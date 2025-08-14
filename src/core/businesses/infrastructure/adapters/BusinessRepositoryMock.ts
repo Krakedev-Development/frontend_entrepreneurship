@@ -74,7 +74,7 @@ const mockBusinesses: Business[] = [
 export class BusinessRepositoryMock implements IBusinessRepository {
   async createBusiness(data: CreateBusinessData): Promise<Business> {
     console.log("Adaptador (Mock): Creando negocio con datos:", data);
-    const newId = Math.max(...mockBusinesses.map((b) => b.id)) + 1;
+    const newId = mockBusinesses.length + 1;
     const newBusiness: Business = {
       id: newId,
       createdAt: new Date(),

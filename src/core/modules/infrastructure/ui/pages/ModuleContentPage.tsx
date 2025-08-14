@@ -78,8 +78,6 @@ export function ModuleContentPage() {
             <FaGraduationCap className="text-primary-500" />
             <span>{moduleContent.title}</span>
           </h3>
-          <p className="text-lg text-neutral-600 mb-6">moduleContent.description</p>
-          
           {/* Contenedor del Video */}
           <div className="aspect-w-16 aspect-h-9 rounded-brand overflow-hidden shadow-md mb-6 bg-black">
             <iframe

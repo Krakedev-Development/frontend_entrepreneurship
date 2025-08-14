@@ -4,12 +4,12 @@
 import React from 'react';
 import type { Module } from "../../../domain/entities/Module";
 import { ModuleStatus } from "../../../domain/entities/ModuleStatus";
-//import { useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 
 interface Props {
   module: Module;
-//  businessId: string; // ID del negocio para la navegación
+  businessId: string; // ID del negocio para la navegación
 }
 
 /**
@@ -17,9 +17,9 @@ interface Props {
  * Ahora usa `module.name` en lugar de `module.title` para mostrar el nombre.
  */
 export const ModuleCard: React.FC<Props> = ({ module, 
-  /** businessId*/
+  businessId
    }) => {
-//  const navigate = useNavigate();
+  const navigate = useNavigate();
    // Objeto de configuración para definir el estilo y el contenido según el estado
   const statusConfig = {
     [ModuleStatus.InProgress]: {
@@ -42,7 +42,7 @@ export const ModuleCard: React.FC<Props> = ({ module,
       return;
     }
     // Navegamos a la nueva ruta con los IDs necesarios
-   // navigate(`/businesses/${businessId}/modules/${module.id}`);
+    navigate(`/businesses/${businessId}/learning-path/${module.id}`);
   };
 
 

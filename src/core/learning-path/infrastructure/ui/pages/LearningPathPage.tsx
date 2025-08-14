@@ -1,5 +1,4 @@
-// Fichero: src/core/learning-path/ui/pages/LearningPathPage.tsx
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import type { Module } from '../../../domain/entities/Module';
 import { LearningPathRepositoryMock } from '../../adapters/LearningPathRepositoryMock';
 import { GetLearningPath } from '../../../application/useCase/GetLearningPath';
@@ -85,7 +84,7 @@ export const LearningPathPage: React.FC = () => {
         ) : (
             // Contenedor de la grilla y la leyenda
             <div className="flex flex-col items-center">
-              <LearningPathGrid modules={modules} />
+              <LearningPathGrid modules={modules} businessId={businessId!} />
               <StatusLegend />
             </div>
         )}

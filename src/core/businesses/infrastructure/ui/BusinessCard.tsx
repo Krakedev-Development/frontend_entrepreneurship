@@ -1,7 +1,7 @@
 import { FaMapMarkerAlt, FaArrowRight } from "react-icons/fa";
-// import { useNavigate } from "react-router-dom";
-import type { Business } from "../../domain/entities/Business";
 import { useNavigate } from "react-router-dom";
+import type { Business } from "../../domain/entities/Business";
+
 
 interface BusinessCardProps {
   business: Business;
@@ -16,7 +16,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
     // Por ahora, lo dejamos como un log.
     console.log(`Continuar con el negocio: ${business.name}`);
 
-      navigate(`/businesses/1/learning-path`);
+      navigate(`/businesses/${business.id}/learning-path`);
   };
 
   return (
@@ -28,8 +28,7 @@ export function BusinessCard({ business }: BusinessCardProps) {
             <h4 className="font-semibold text-neutral-800 text-lg mb-1">
               {/* Nota: El icono y color se manejan mejor con componentes o mapeos */}
               <i className={`${business.icon} text-${business.color} mr-2`}></i>
-              <span>{business.businessType}</span> "<span>{business.name}</span>
-              "
+              <span>{business.businessType}</span> "<span>{business.name}</span>              "
             </h4>
             <p className="text-sm text-neutral-500 flex items-center gap-1">
               <FaMapMarkerAlt />

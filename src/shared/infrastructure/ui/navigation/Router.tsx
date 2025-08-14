@@ -7,17 +7,53 @@ import {
 import { Routes } from "./routes";
 import PageNotFound from "../../components/PageNotFound";
 
-const RouteObjects: Array<RouteObject> = Object.values(Routes).map((e) => ({
-  path: e.path,
+// 🔧 Función recursiva para manejar rutas anidadas
+const createRouteObject = (route: any): RouteObject => {
+  const routeObject: RouteObject = {
+    path: route.path,
+    element: <route.element />,
+  };
+
+  // Si tiene rutas anidadas, procesarlas recursivamente
+  if (route.routes) {
+    routeObject.children = Object.values(route.routes).map((childRoute: any) => 
+      createRouteObject(childRoute)
+    );
+  }
+
+  return routeObject;
+};
+
+const RouteObjects: Array<RouteObject> = Object.values(Routes).map((section) => ({
+  path: section.path,
   element: (
-    <e.layout>
+    <section.layout>
       <Outlet />
-    </e.layout>
+    </section.layout>
   ),
-  children: Object.values(e.routes).map((r) => ({
-    path: r.path,
-    element: <r.element />,
-  })),
+  children: Object.values(section.routes).map((route: any) => {
+    // 🔧 Caso especial para rutas con subrutas anidadas
+    if (route.routes) {
+      return {
+        path: route.path,
+        element: route.layout ? (
+          <route.layout>
+            <Outlet />
+          </route.layout>
+        ) : <Outlet />,
+        children: Object.values(route.routes).map((subRoute: any) => ({
+          path: subRoute.path,
+          element: <subRoute.element />,
+        })),
+      };
+    }
+    
+    // Caso normal
+    return {
+      path: route.path,
+      element: <route.element />,
+    };
+  }),
 }));
 
 const router = createBrowserRouter([

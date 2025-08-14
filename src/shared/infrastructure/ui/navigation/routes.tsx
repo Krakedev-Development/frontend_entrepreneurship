@@ -5,6 +5,7 @@ import { BusinessForm } from "../../../../core/businesses/infrastructure/ui/Busi
 import { LearningPathPage } from "../../../../core/learning-path/infrastructure/ui/pages/LearningPathPage";
 import { Navigate } from "react-router-dom";
 import { LoginPage } from "../../../../core/auth/infrastructure/ui/LoginPage";
+import { ModuleContentPage } from "../../../../core/modules/infrastructure/ui/pages/ModuleContentPage";
 // ... (layout si lo usas)
 
 export const Routes = {
@@ -48,9 +49,20 @@ export const Routes = {
       // 👇 AÑADE ESTA NUEVA RUTA ANIDADA AQUÍ
       learningPath: {
         title: "Camino de Aprendizaje",
-        // La ruta ahora contiene un parámetro dinámico ':businessId'
-        path: ":businessId/learning-path", 
-        element: LearningPathPage,
+        path: ":businessId/learning-path",
+        layout: React.Fragment,
+        routes: {
+          index: {
+            title: "Vista Principal",
+            path: "", // index route
+            element: LearningPathPage,
+          },
+          module: {
+            title: "Module",
+            path: ":moduleId", 
+            element: ModuleContentPage,
+          },
+        },
       },
     },
   },
