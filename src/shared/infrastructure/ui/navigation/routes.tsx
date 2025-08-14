@@ -3,10 +3,33 @@ import React from "react";
 import { BusinessesPage } from "../../../../core/businesses/infrastructure/ui/BusinessesPage";
 import { BusinessForm } from "../../../../core/businesses/infrastructure/ui/BusinessForm";
 import { LearningPathPage } from "../../../../core/learning-path/infrastructure/ui/pages/LearningPathPage";
+import { Navigate } from "react-router-dom";
+import { LoginPage } from "../../../../core/auth/infrastructure/ui/LoginPage";
 // ... (layout si lo usas)
 
 export const Routes = {
-  // ... (sección 'home' y 'auth' sin cambios)
+  home: {
+    path: "",
+    layout: React.Fragment,
+    routes: {
+      redirect: {
+        title: "",
+        path: "",
+        element: () => <Navigate to="/login" />,
+      },
+    },
+  },
+  auth: {
+    path: "/login",
+    layout: React.Fragment,
+    routes: {
+      login: {
+        title: "",
+        path: "",
+        element: LoginPage,
+      },
+    },
+  },
 
   businesses: {
     path: "/businesses",
