@@ -6,6 +6,8 @@ import { GetLearningPath } from '../../../application/useCase/GetLearningPath';
 import { LearningPathGrid } from '../components/LearningPathGrid';
 import { StatusLegend } from '../components/StatusLegend';
 import { ModuleHeader } from '../../../../../shared/infrastructure/components/Header';
+import { Link, useParams } from 'react-router-dom';
+
 
 
 /**
@@ -13,59 +15,81 @@ import { ModuleHeader } from '../../../../../shared/infrastructure/components/He
  * Instancia las dependencias y ejecuta el caso de uso para mostrar los datos.
  */
 export const LearningPathPage: React.FC = () => {
-  const [modules, setModules] = useState<Module[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+    // El nombre 'businessId' debe coincidir con el que definiste en routes.ts (':businessId')
+    const { businessId } = useParams<{ businessId: string }>();
 
-  useEffect(() => {
-    // --- Inyección de Dependencias ---
-    const learningPathRepository = new LearningPathRepositoryMock();
-    const getLearningPathUseCase = new GetLearningPath(learningPathRepository);
+    const [modules, setModules] = useState<Module[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+    useEffect(() => {
+        // 👇 3. USA EL 'businessId' PARA CARGAR LOS DATOS
+        if (!businessId) {
+            setError("No se ha especificado un ID de negocio.");
+            setIsLoading(false);
+            return; // Detiene la ejecución si no hay ID
+        }
 
-    const fetchModules = async () => {
-      try {
-        setIsLoading(true);
-        // Ahora llamamos al caso de uso con un ID de ejemplo.
-        // En una app real, este ID vendría de la URL, del estado global, etc.
-        const learningPathId = 1;
-        const fetchedModules = await getLearningPathUseCase.execute(learningPathId);
-        setModules(fetchedModules);
-      } catch (error) {
-        console.error('Error al obtener el camino de aprendizaje:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+        const learningPathRepository = new LearningPathRepositoryMock();
+        const getLearningPathUseCase = new GetLearningPath(learningPathRepository);
 
-    fetchModules();
-  }, []);
+        const fetchModules = async () => {
+            try {
+                setIsLoading(true);
+                // El caso de uso ya estaba preparado para recibir un ID.
+                // Convertimos el ID (que es un string) a número.
+                const idAsNumber = parseInt(businessId, 10);
+                const fetchedModules = await getLearningPathUseCase.execute(idAsNumber);
+                setModules(fetchedModules);
+            } catch (err) {
+                console.error('Error al obtener el camino de aprendizaje:', err);
+                setError("No se pudieron cargar los módulos.");
+            } finally {
+                setIsLoading(false);
+            }
+        };
 
-  return (
-<>
-   <ModuleHeader title="Módulo de Educación Financiera" userName="Usuario de Prueba" />
-     <div className="bg-gray-100 min-h-screen flex flex-col items-center py-10">
+        fetchModules();
+        // Añadimos 'businessId' como dependencia del useEffect.
+        // Si la URL cambia (ej. de un negocio a otro), los datos se recargarán.
+    }, [businessId]);
 
+    // Manejo de errores en la UI
+    if (error) {
+        return (
+            <div className="text-center py-10 text-red-500">
+                <h1>Error</h1>
+                <p>{error}</p>
+            </div>
+        );
+    }
 
-      <main className="flex flex-col items-center">
-        <div className="text-center mb-8">
-            <h2 className="text-4xl font-bold text-gray-800 mb-2">Camino de Aprendizaje</h2>
-            <a href="#" className="text-blue-600 hover:underline">
+   return (
+    // Usamos flexbox para distribuir el espacio verticalmente
+    <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
+      
+      {/* 1. Header: Ocupa su espacio natural (que ya redujimos) */}
+      <ModuleHeader title="Módulo de Educación Financiera" userName="Emprendedor" />
+      
+      {/* 2. Contenedor Principal: Crece para ocupar el espacio restante y centra su contenido */}
+      <main className="flex-1 flex flex-col items-center justify-center p-4">
+        {/* Título y enlace con margen vertical reducido */}
+        <div className="text-center mb-4">
+            <h2 className="text-3xl font-bold text-gray-800 mb-3">Camino de Aprendizaje</h2>
+            <Link to="/businesses" className="text-blue-600 hover:text-blue-800 text-base">
             &larr; Volver a Negocios
-            </a>
+            </Link>
         </div>
 
         {isLoading ? (
             <p>Cargando módulos...</p>
         ) : (
-            <>
-            <LearningPathGrid modules={modules} />
-            <StatusLegend />
-            </>
+            // Contenedor de la grilla y la leyenda
+            <div className="flex flex-col items-center">
+              <LearningPathGrid modules={modules} />
+              <StatusLegend />
+            </div>
         )}
       </main>
     </div>
-
-</>
-    
-   
   );
 };

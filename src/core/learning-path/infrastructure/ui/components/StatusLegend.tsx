@@ -6,18 +6,18 @@ import React from 'react';
  */
 export const StatusLegend: React.FC = () => {
   return (
-    <div className="flex items-center justify-center space-x-6 mt-12">
-      <div className="flex items-center">
-        <div className="w-4 h-4 rounded-full bg-green-500 mr-2"></div>
-        <span>Completado</span>
+    <div className="flex items-center justify-center  gap-8 space-x-6 mt-12">
+      <div className="flex items-center  gap-2">
+        <div className="w-4 h-4  bg-green-500 rounded shadow-sm mr-2"></div>
+        <span className="text-slate-600 font-semibold text-black">Completado</span>
       </div>
-      <div className="flex items-center">
-        <div className="w-4 h-4 rounded-full bg-blue-500 mr-2"></div>
-        <span>En progreso</span>
+      <div className="flex items-center  gap-2">
+        <div className="w-4 h-4  bg-blue-500 rounded shadow-sm mr-2"></div>
+        <span className="text-slate-600 font-semibold text-black">En progreso</span>
       </div>
-      <div className="flex items-center">
-        <div className="w-4 h-4 rounded-full bg-gray-400 mr-2"></div>
-        <span>Bloqueado</span>
+      <div className="flex items-center  gap-2">
+        <div className="w-4 h-4 bg-gray-400 rounded shadow-sm mr-2"></div>
+        <span className="text-slate-600 font-semibold text-black " >Bloqueado</span>
       </div>
     </div>
   );

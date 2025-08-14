@@ -57,6 +57,13 @@ export default {
           DEFAULT: "var(--color-error)",
           dark: "var(--color-error-dark)",
         },
+        'module-blue': '#4285F4', // Un azul vibrante para 'En progreso'
+        'module-gray': '#B0B0B0', // Un gris claro para 'Bloqueado'
+        'module-line': '#C0C0C0', // Un gris un poco más claro para las líneas
+        'icon-lock': '#F9A825',  // Un tono ámbar/naranja para el candado
+        'icon-progress': '#E94235', // Un rojo para el ícono de progreso
+        'page-bg-start': '#F4F6FA', // Inicio del degradado del fondo
+        'page-bg-end': '#E6E9F7',   // Fin del degradado del fondo
       },
 
       // === TIPOGRAFÍA ===
