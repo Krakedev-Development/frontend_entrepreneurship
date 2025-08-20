@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { FaRobot, FaCheckCircle } from "react-icons/fa";
+import { FaRobot, FaCheckCircle,FaExclamationTriangle  } from "react-icons/fa";
 import type { ModuleContent } from "../../../domain/entities/ModuleContent";
 import type { FinancialRecord } from "../../../domain/entities/FinancialRecord";
+import { ValidationModal } from "./ValidationModal";
 
 // ============================================================================
 // 1. The Financial Record Form (as a "Dumb" Presentation Component)
@@ -104,6 +105,11 @@ interface SimulationSectionProps {
 
 export function SimulationSection({ moduleContent, onSimulationComplete }: SimulationSectionProps) {
   const [simulationCompleted, setSimulationCompleted] = useState(false);
+  // --- ESTADO (NUEVO) ---
+  // Guardaremos si los datos son válidos para configurar el modal
+  const [isValid, setIsValid] = useState(false);
+    // --- ESTADO DEL MODAL (NUEVO) ---
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Helper para crear un nuevo registro. Esto evita la repetición de código.
   const createNewRecord = (): FinancialRecord => ({
@@ -152,14 +158,26 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
   };
   // --- End of Lifted State and Logic ---
 
-  const handleCompleteSimulation = () => {
-    // Here you could add logic to validate the records or send them to an API.
-    console.log("Simulación finalizada con los siguientes datos:", { records, total });
-
+ // --- LÓGICA DE COMPLETACIÓN (SEPARADA) ---
+ const proceedWithCompletion = () => {
+    console.log("Simulación finalizada...", { records, total });
     setSimulationCompleted(true);
-    // Pass the final data up to the parent component.
     onSimulationComplete(records, total);
   };
+
+  const handleAnalyzeClick = () => {
+    const emptyRecords = records.filter(
+      (record) => record.name.trim() === "" || record.amount.trim() === ""
+    );
+    setIsValid(emptyRecords.length === 0);
+    setIsModalOpen(true);
+  };
+
+  const handleConfirmAnalysis = () => {
+    setIsModalOpen(false);
+    proceedWithCompletion();
+  };
+
 
   if (simulationCompleted) {
     return (
@@ -190,7 +208,7 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
 
         <div className="border-t border-neutral-200 mt-6 text-right">
           <button
-            onClick={handleCompleteSimulation}
+            onClick={handleAnalyzeClick}
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-brand shadow-lg"
           >
             Ejecutar Analisis
@@ -198,6 +216,33 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
         </div>
 
       </div>
+
+       {/* RENDERIZADO DEL MODAL (NUEVO) */}
+    {/* RENDERIZADO DEL MODAL (AHORA MÁS LIMPIO) */}
+      <ValidationModal
+        isOpen={isModalOpen}
+        variant={isValid ? 'confirmation' : 'warning'}
+        title={isValid ? "Confirmar Análisis" : "Datos Incompletos"}
+        icon={
+          isValid 
+            ? <FaCheckCircle className="text-green-600" /> 
+            : <FaExclamationTriangle className="text-yellow-500" />
+        }
+        onClose={() => setIsModalOpen(false)}
+        onConfirm={handleConfirmAnalysis}
+      >
+        {isValid ? (
+          <div>
+            <p>Todos los datos están listos para ser analizados.</p>
+            <p className="mt-2">Se analizarán <strong>{records.length}</strong> costos por un total de <strong>${total.toFixed(2)}</strong>.</p>
+          </div>
+        ) : (
+          <div>
+            <p className="font-bold mb-3">Se encontraron campos vacíos.</p>
+            <p>Por favor, cierra esta ventana y asegúrate de que todos los costos tengan un nombre y un monto asignado.</p>
+          </div>
+        )}
+      </ValidationModal>
     </div>
   );
 };
