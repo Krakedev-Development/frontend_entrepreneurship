@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+// Fichero: src/core/learning-path/ui/pages/LearningPathPage.tsx
+import React, { useEffect, useState } from 'react';
 import type { Module } from '../../../domain/entities/Module';
 import { LearningPathRepositoryMock } from '../../adapters/LearningPathRepositoryMock';
 import { GetLearningPath } from '../../../application/useCase/GetLearningPath';
@@ -82,11 +83,16 @@ export const LearningPathPage: React.FC = () => {
         {isLoading ? (
             <p>Cargando módulos...</p>
         ) : (
-            // Contenedor de la grilla y la leyenda
-            <div className="flex flex-col items-center">
-              <LearningPathGrid modules={modules} businessId={businessId!} />
-              <StatusLegend />
-            </div>
+           // --- CAMBIO AQUÍ ---
+            // Nos aseguramos de que businessId exista antes de renderizar la grilla.
+            // Esto le garantiza a TypeScript que la prop será de tipo 'string'.
+            businessId && (
+              <div className="flex flex-col items-center">
+                <LearningPathGrid modules={modules}  businessId={businessId} />
+                <StatusLegend />
+              </div>
+            )
+            // ------------------
         )}
       </main>
     </div>
