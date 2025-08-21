@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { FaRobot, FaCheckCircle,FaExclamationTriangle  } from "react-icons/fa";
+import { FaRobot, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import type { ModuleContent } from "../../../domain/entities/ModuleContent";
 import type { FinancialRecord } from "../../../domain/entities/FinancialRecord";
+import type {  ValidationResult } from "../../../domain/entities/ValidationResult";
 import { ValidationModal } from "./ValidationModal";
+import {  ValidationResultDisplay } from './ValidationResultDisplay';
 
 // ============================================================================
-// 1. The Financial Record Form (as a "Dumb" Presentation Component)
+// 1. Componente de UI "Tonto" para el Formulario de Registros Financieros
 // ============================================================================
-// It receives all data and functions via props from its parent.
-
 interface FinancialRecordFormProps {
   records: FinancialRecord[];
   total: number;
@@ -26,7 +26,6 @@ function FinancialRecordForm({
 }: FinancialRecordFormProps) {
   return (
     <div className="space-y-4">
-      {/* "Añadir" button, calls the function passed via props */}
       <button
         type="button"
         onClick={onAddRecord}
@@ -35,7 +34,6 @@ function FinancialRecordForm({
         <i className="fas fa-plus mr-2"></i>Añadir Costo
       </button>
 
-      {/* Renders the list of records it receives via props */}
       {records.length > 0 && (
         <div className="space-y-4 overflow-y-auto max-h-96 pr-2 bg-secondary-50">
           {records.map((record) => (
@@ -43,7 +41,6 @@ function FinancialRecordForm({
               <div className="flex-1">
                 <input
                   type="text"
-                  id={`record-name-${record.id}`}
                   placeholder="Nombre del costo (ej: Alquiler)"
                   value={record.name}
                   onChange={(e) => onUpdateRecord(record.id, 'name', e.target.value)}
@@ -53,9 +50,7 @@ function FinancialRecordForm({
               <div className="w-32">
                 <input
                   type="number"
-                  id={`record-amount-${record.id}`}
                   placeholder="Monto"
-                  // NOTE: The `value` of an input is always a string.
                   value={record.amount}
                   onChange={(e) => onUpdateRecord(record.id, 'amount', e.target.value)}
                   className="w-full rounded-lg border border-gray-300 px-4 py-3 transition-all focus:border-yellow-500 focus:ring-2 focus:ring-yellow-200 focus:outline-none"
@@ -65,7 +60,7 @@ function FinancialRecordForm({
                 <button
                   type="button"
                   onClick={() => onRemoveRecord(record.id)}
-                  aria-label="Remove record"
+                  aria-label="Eliminar registro"
                   className="p-2 text-red-500 hover:text-red-600 transition-colors rounded-full hover:bg-red-50"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -77,11 +72,9 @@ function FinancialRecordForm({
           ))}
         </div>
       )}
+      
       <div className="space-y-8">
-
-        <div
-          className="bg-accent-50 border-l-4 border-accent-500 p-4 mt-5 rounded-r-lg"
-        >
+        <div className="bg-accent-50 border-l-4 border-accent-500 p-4 mt-5 rounded-r-lg">
           <h4 className="text-xl font-bold text-accent-700 mb-2">Total</h4>
           <div className="text-4xl font-bold text-accent-800">
             $ <span>{total.toFixed(2)}</span>
@@ -92,99 +85,208 @@ function FinancialRecordForm({
   );
 }
 
-
 // ============================================================================
-// 2. The Main Simulation Section Component (The "Smart" Container)
+// 2. Componente Contenedor "Inteligente" que maneja la Lógica y el Estado
 // ============================================================================
-// It holds the state and logic, and passes them down to the form component.
-
 interface SimulationSectionProps {
   moduleContent: ModuleContent;
   onSimulationComplete: (records: FinancialRecord[], total: number) => void;
-};
+}
 
 export function SimulationSection({ moduleContent, onSimulationComplete }: SimulationSectionProps) {
-  const [simulationCompleted, setSimulationCompleted] = useState(false);
-  // --- ESTADO (NUEVO) ---
-  // Guardaremos si los datos son válidos para configurar el modal
-  const [isValid, setIsValid] = useState(false);
-    // --- ESTADO DEL MODAL (NUEVO) ---
-  const [isModalOpen, setIsModalOpen] = useState(false);
-
-  // Helper para crear un nuevo registro. Esto evita la repetición de código.
-  const createNewRecord = (): FinancialRecord => ({
-    id: Date.now() + Math.random(), // Añadimos random para mayor unicidad en caso de llamadas rápidas
-    name: "",
-    amount: "",
-    businessId: 1,
-    moduleId: moduleContent.id,
-    createdAt: new Date().toISOString(),
-  });
-
-  // --- State and Logic Lifted from the Form ---
+ // --- Estados del Formulario y UI ---
   const [records, setRecords] = useState<FinancialRecord[]>(() => [createNewRecord()]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [simulationCompleted, setSimulationCompleted] = useState(false);
 
-  // The total is derived from the state on each render.
-  const total = records.reduce((sum, record) => {
-    // Parse the amount string to a number for calculation.
-    const amount = parseFloat(record.amount) || 0;
-    return sum + amount;
-  }, 0);
+  // --- Lógica del Formulario ---
+  function createNewRecord(): FinancialRecord {
+    return {
+      id: Date.now() + Math.random(),
+      name: "",
+      amount: "",
+      businessId: 1, // Debes obtener este ID dinámicamente
+      moduleId: moduleContent.id,
+      createdAt: new Date().toISOString(),
+    };
+  }
 
-  const addRecord = () => {
-    setRecords(prevRecords => [...prevRecords, createNewRecord()]);
+  const total = records.reduce((sum, record) => sum + (parseFloat(record.amount) || 0), 0);
+
+  const addRecord = () => setRecords(prev => [...prev, createNewRecord()]);
+  const removeRecord = (id: number) => setRecords(prev => prev.length > 1 ? prev.filter(r => r.id !== id) : prev);
+  const updateRecord = (id: number, field: 'name' | 'amount', value: string) => {
+    setRecords(prev => prev.map(r => r.id === id ? { ...r, [field]: value } : r));
+  };
+  
+  // --- Lógica del Flujo de Análisis (API y Modal) ---
+  // --- Lógica de la API (Ahora para Validación) ---
+  const executeValidation = async () => {
+    setIsLoading(true);
+    setError(null);
+    setValidationResult(null);
+
+    const listaCostos = records
+      .map(r => r.name && r.amount ? `${r.name.trim()}: $${r.amount}` : null)
+      .filter(Boolean)
+      .join('\n');
+
+    // TODO: Obtener la ubicación dinámicamente si es necesario
+    const ubicacion = "Quito, La Carolina";
+    const tipoNegocio="Cafeteria"
+    
+    // El prompt completo para la IA
+ const prompt = `Rol: Actúa como un auditor de datos financieros y analista de riesgos. Tu especialización es asegurar la calidad y precisión de la información financiera de entrada para emprendimientos en Quito, Ecuador, antes de que sea utilizada en un análisis estratégico.
+
+Contexto: Soy un emprendedor con un negocio pequeño de tipo ${tipoNegocio} ubicado en ${ubicacion} y necesito tu ayuda para depurar mi lista de costos mensuales antes de que tu colega, el asesor financiero de élite, realice el diagnóstico completo. Un análisis profundo basado en datos incorrectos, agrupados o mal categorizados sería inútil y me llevaría a tomar decisiones erróneas. Tu misión es auditar mi lista y darme el visto bueno para proceder, o indicarme exactamente qué debo corregir.
+
+Reglas de Validación:
+1.  **Exclusividad de Costos Fijos:** La lista solo debe contener costos fijos, es decir, aquellos que no varían significativamente con el volumen de ventas mes a mes. Costos como 'materia prima', 'compra de inventario', 'insumos' o 'packaging' son costos variables y deben ser marcados como inválidos.
+2.  **Costos Desagregados:** Cada ítem debe representar un único costo. No se aceptan costos agrupados como 'Servicios básicos e internet' o 'Marketing y permisos'. Deben ser listados por separado para un análisis preciso.
+3.  **Especificidad:** No se aceptan costos ambiguos o genéricos como 'Varios', 'Otros gastos' o 'Gastos administrativos'. Cada costo debe ser claramente identificable.
+4. **Exclusión Explícita de Costos obligatorios:** Cualquier costo relacionado con compensación humana debe ser omitido, descartado y/o no incluido obligatorios en los para este análisis específico. Esto incluye pero no se limita a:
+
+Sueldos y salarios: Pagos fijos mensuales a empleados
+Honorarios profesionales: Pagos a consultores, asesores o profesionales independientes
+Nómina: Cualquier concepto incluido en la planilla de pagos
+Beneficios sociales: Décimo tercero, décimo cuarto, vacaciones, utilidades
+Aportes patronales: IESS, fondos de reserva, contribuciones obligatorias
+Bonificaciones: Incentivos, comisiones fijas, bonos de productividad
+Contratistas de servicios personales: Pagos a personas naturales por servicios específicos
+Capacitación de personal: Cursos, entrenamientos, desarrollo profesional
+Uniformes y equipos de trabajo: Vestimenta, herramientas personales, EPP
+
+**NO DEBES INCLUIR EN LOS COSTOS OBLIGATORIOS Cualquier costo relacionado con 'sueldos', 'honorarios', 'salarios' o 'nómina' INCLUSO SI SON ESCENCIALES**
+**NO DEBES INCLUIR EN LOS COSTOS OBLIGATORIOS Cualquier costo relacionado con 'contabilidad' INCLUSO SI SON ESCENCIALES**
+
+Justificación: Este análisis se enfoca exclusivamente en costos operativos mensuales no relacionados con personal para proporcionar una base de costos fijos que permita evaluar la viabilidad operativa independiente de las decisiones de contratación. Los costos de personal serán analizados en una fase posterior del proceso de planificación financiera.
+
+5.  **Verificación de Costos obligatorios faltantes:** Basado en el ${tipoNegocio} proporcionado, debes inferir los costos fijos críticos (Requeridos por ley o que causan cierre del negocio si faltan) que fueron omitidos y mencionarlos en el resumen (en caso de haber alguno). En caso de existir costos obligatorios faltantes no se podrá proseguir con el analisis por lo que debes ser muy cauteloso al agregar alguno, recuerda que es un negocio pequeño y a lo mejor no es imperativo tener en cuenta estos costos, NO ESTAS OBLIGADO A INCLUIR COSTOS OBLIGATORIOS, SI CONSIDERAS QUE SE A PROPORCIONADO UNA LISTA ACEPTABLE DE COSTOS FIJOS DEJA LA SECCION DE COSTOS OBLIGATORIOS VACIA Y CENTRATE EN VALIDAR SUS VALORES. en tal caso puedes ponerlos en la seccion de recomendados, que no impiden que se prosiga con el analisis.
+6.  **Verificación de Costos recomendados faltantes:** Basado en el ${tipoNegocio} proporcionado, debes inferir los costos fijos no tan importantes (Mejoran eficiencia/rentabilidad pero no son críticos) que fueron omitidos y mencionarlos en el resumen (en caso de haber alguno). Estos costos son meramente informativos para el conocimiento del emprendedor por lo tanto no impiden que se prosiga con el analisis en caso de no ser incluidos.
+7.  **Verificación de costos realistas:** Parte crucial de tu trabajo es identificar los valores ilógicos o fuera del rango aceptable para la ubicacion mencionada. Para conseguir esto debes Comparar con rangos de mercado típicos para la ubicación, Considerar el tamaño/escala del negocio, Verificar coherencia entre costos relacionados. En caso de no cumplir con esta regla el costo debe ser marcado com invalido.
+
+Información a Validar:
+Tipo de Negocio: ${tipoNegocio}
+Ubicacion: ${ubicacion}
+Lista de Costos Proporcionada:
+${listaCostos}
+
+Tarea:
+Analiza cada costo en la lista proporcionada según las reglas de validación. Luego, determina si faltan costos obligatorios para el tipo de negocio. Evita incluir costos redundantes aparentemente obligatorios y adhierete firmemente a las reglas de validacion, en caso de que la lista de costos provista sea suficientemente robusta puedes no incluir la seccion de costos_obligatorios_faltantes. Finalmente, genera un veredicto que indique si puedo proceder con el análisis principal. Tu respuesta debe ser únicamente un objeto JSON que siga estrictamente la siguiente estructura. No incluyas ningún texto introductorio o explicaciones fuera del formato JSON.
+
+
+Formato de Respuesta:
+
+{
+  "validacion_de_costos": [
+    {
+      "costo_recibido": "Costo1",
+      "valor_recibido": "$Valor1",
+      "es_valido": true,
+      "justificacion": "Válido. Es un costo fijo, específico y fundamental para el análisis."
+    },
+    {
+      "costo_recibido": "Costo2",
+      "valor_recibido": "$Valor2",
+      "es_valido": false,
+      "justificacion": "Inválido. Este costo es variable, no fijo. Su valor depende directamente de las ventas y la producción."
+    },
+    {
+      "costo_recibido": "Costo3",
+      "valor_recibido": "$Valor3",
+      "es_valido": false,
+      "justificacion": "Inválido. El término es ambiguo y agrupa múltiples costos. Se debe desglosar en ítems específicos."
+    },
+    {
+      "costo_recibido": "Costo4",
+      "valor_recibido": "$Valor4",
+      "es_valido": false,
+      "justificacion": "Inválido. Según las instrucciones, este tipo de costo debe ser excluido del análisis."
+    }
+  ],
+  "costos_obligatorios_faltantes": [
+    {
+      "nombre": "Costo Obligatorio 1",
+      "descripcion": "Descripción del costo obligatorio que debe incluirse por ley o necesidad operativa.",
+      "motivo_critico": "Razón por la cual este costo es crítico y obligatorio para el funcionamiento del negocio."
+    },
+    {
+      "nombre": "Costo Obligatorio 2",
+      "descripcion": "Descripción del segundo costo obligatorio necesario para la operación.",
+      "motivo_critico": "Explicación de por qué es indispensable incluir este costo en el análisis."
+    }
+  ],
+  "costos_recomendados_faltantes": [
+    {
+      "nombre": "Costo Recomendado 1",
+      "descripcion": "Descripción del costo recomendado que mejora la operación del negocio.",
+      "beneficio": "Beneficio específico que aporta este costo al crecimiento y eficiencia del negocio."
+    },
+    {
+      "nombre": "Costo Recomendado 2",
+      "descripcion": "Descripción del segundo costo recomendado para optimizar operaciones.",
+      "beneficio": "Ventaja competitiva o mejora operativa que proporciona este costo al negocio."
+    }
+  ],
+  "resumen_validacion": {
+    "mensaje_general": "Se han detectado errores en la lista proporcionada. Por favor, corrígela siguiendo las justificaciones para cada ítem inválido. Adicionalmente, para este tipo de negocio, es crítico que no olvides incluir los costos obligatorios y recomendados listados. Estos son vitales para la protección y el crecimiento sostenible del negocio.",
+    "puede_proseguir_analisis": false
+  }
+}
+
+Nota: ste formato tiene funciones exclusivamente informativas para el correcto formato de la respuesta. Por ningún motivo debe ser la respuesta recibida. Los textos genéricos deben ser reemplazados con contenido específico.
+
+  `;
+
+      try {
+      const res = await fetch("https://backend-costos.onrender.com/analizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+      
+      const data = await res.json();
+      const content = data.respuesta as string;
+      const parsedContent: ValidationResult = JSON.parse(content.match(/```(?:json)?([\s\S]*?)```/)?.[1] || content);
+      
+      setValidationResult(parsedContent);
+    } catch (err: any) {
+      setError(err.message || "Ocurrió un error al procesar la validación.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const removeRecord = (recordId: number) => {
-    setRecords(prevRecords => {
-      // Si solo queda un elemento, no permitimos la eliminación.
-      if (prevRecords.length <= 1) {
-        return prevRecords; // Devolvemos el array sin cambios.
-      }
-      // Si hay más de un elemento, filtramos como antes.
-      return prevRecords.filter(record => record.id !== recordId);
-    });
-  };
-
-  // This function now correctly handles updating fields with string values.
-  const updateRecord = (recordId: number, field: 'name' | 'amount', value: string) => {
-    setRecords(prevRecords =>
-      prevRecords.map(record =>
-        record.id === recordId
-          ? { ...record, [field]: value }
-          : record
-      )
-    );
-  };
-  // --- End of Lifted State and Logic ---
-
- // --- LÓGICA DE COMPLETACIÓN (SEPARADA) ---
- const proceedWithCompletion = () => {
-    console.log("Simulación finalizada...", { records, total });
-    setSimulationCompleted(true);
-    onSimulationComplete(records, total);
-  };
-
-  const handleAnalyzeClick = () => {
-    const emptyRecords = records.filter(
-      (record) => record.name.trim() === "" || record.amount.trim() === ""
-    );
-    setIsValid(emptyRecords.length === 0);
+  // --- MANEJADORES DEL MODAL ---
+  const handleExecuteValidation = () => {
     setIsModalOpen(true);
+    executeValidation();
   };
-
-  const handleConfirmAnalysis = () => {
+  
+  const handleProceedToAnalysis = () => {
+    // Aquí es donde llamarías al SIGUIENTE paso (el análisis con el prompt anterior)
+    // Por ahora, simplemente cerramos el modal y completamos la simulación.
+    console.log("Procediendo al análisis principal con datos validados...");
     setIsModalOpen(false);
-    proceedWithCompletion();
+    onSimulationComplete(records, total);
+     setSimulationCompleted(true); // Descomentar si tienes una pantalla de éxito
   };
 
+  const handleCloseAndCorrect = () => {
+    setIsModalOpen(false);
+  };
 
   if (simulationCompleted) {
     return (
       <div className="text-center p-8 bg-green-100 rounded-brand border border-green-300">
         <FaCheckCircle className="text-5xl text-green-600 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-green-800">Analisis Completado!</h3>
-        <p className="text-neutral-600 mt-2">Has registrado un total de ${total.toFixed(2)} en costos.</p>
+        <h3 className="text-2xl font-bold text-green-800">¡Proceso Completado!</h3>
+        <p className="text-neutral-600 mt-2">Tus datos han sido validados y el análisis ha finalizado.</p>
       </div>
     );
   }
@@ -197,7 +299,6 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
       </h3>
 
       <div className="bg-secondary-50 rounded-brand p-8 mb-6">
-        {/* We render the form component and pass down all the state and handlers */}
         <FinancialRecordForm
           records={records}
           total={total}
@@ -205,44 +306,47 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
           onRemoveRecord={removeRecord}
           onUpdateRecord={updateRecord}
         />
-
         <div className="border-t border-neutral-200 mt-6 text-right">
           <button
-            onClick={handleAnalyzeClick}
+            onClick={handleExecuteValidation}
             className="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-brand shadow-lg"
           >
             Ejecutar Analisis
           </button>
         </div>
-
       </div>
 
-       {/* RENDERIZADO DEL MODAL (NUEVO) */}
-    {/* RENDERIZADO DEL MODAL (AHORA MÁS LIMPIO) */}
       <ValidationModal
         isOpen={isModalOpen}
-        variant={isValid ? 'confirmation' : 'warning'}
-        title={isValid ? "Confirmar Análisis" : "Datos Incompletos"}
-        icon={
-          isValid 
-            ? <FaCheckCircle className="text-green-600" /> 
-            : <FaExclamationTriangle className="text-yellow-500" />
+        variant={validationResult?.resumen_validacion.puede_proseguir_analisis ? 'confirmation' : 'warning'}
+        title={
+          isLoading ? "Auditando Datos..." : 
+          error ? "Error de Auditoría" : "Reporte de Auditoría"
         }
-        onClose={() => setIsModalOpen(false)}
-        onConfirm={handleConfirmAnalysis}
+        icon={
+          isLoading ? <FaRobot className="animate-spin" /> : 
+          error ? <FaExclamationTriangle className="text-red-500" /> : 
+          <FaCheckCircle className="text-blue-500" />
+        }
+        onClose={handleCloseAndCorrect}
+        onConfirm={handleProceedToAnalysis}
+        showFooter={!isLoading}
       >
-        {isValid ? (
-          <div>
-            <p>Todos los datos están listos para ser analizados.</p>
-            <p className="mt-2">Se analizarán <strong>{records.length}</strong> costos por un total de <strong>${total.toFixed(2)}</strong>.</p>
+        {isLoading && (
+          <div className="text-center p-8">
+            <FaRobot className="text-4xl text-primary-600 mx-auto animate-pulse" />
+            <p className="mt-4 text-lg">Realizando analisis...</p>
           </div>
-        ) : (
-          <div>
-            <p className="font-bold mb-3">Se encontraron campos vacíos.</p>
-            <p>Por favor, cierra esta ventana y asegúrate de que todos los costos tengan un nombre y un monto asignado.</p>
+        )}
+        {error && (
+          <div className="text-center p-8 bg-red-50 rounded-lg">
+            <p className="text-neutral-600">{error}</p>
           </div>
+        )}
+        {validationResult && (
+          <ValidationResultDisplay data={validationResult} />
         )}
       </ValidationModal>
     </div>
   );
-};
+}
