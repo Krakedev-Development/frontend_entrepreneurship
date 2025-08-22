@@ -1,10 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { FaRobot, FaCheckCircle, FaExclamationTriangle } from "react-icons/fa";
 import type { ModuleContent } from "../../../domain/entities/ModuleContent";
 import type { FinancialRecord } from "../../../domain/entities/FinancialRecord";
 import type {  ValidationResult } from "../../../domain/entities/ValidationResult";
 import { ValidationModal } from "./ValidationModal";
 import {  ValidationResultDisplay } from './ValidationResultDisplay';
+import { FinalAnalysisResultDisplay } from "./FinalAnalysisResultDisplay";
+import type { FinalAnalysisResult } from "../../../domain/entities/FinalAnalysisResult";
 
 // ============================================================================
 // 1. Componente de UI "Tonto" para el Formulario de Registros Financieros
@@ -100,8 +102,14 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
   const [error, setError] = useState<string | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
+  const [finalAnalysisResult, setFinalAnalysisResult] = useState<FinalAnalysisResult | null>(null);
   const [simulationCompleted, setSimulationCompleted] = useState(false);
 
+  useEffect(() => {
+  if (simulationCompleted) {
+    ValidationGeneral();
+  }
+}, [simulationCompleted]);
   // --- Lógica del Formulario ---
   function createNewRecord(): FinancialRecord {
     return {
@@ -276,17 +284,125 @@ Nota: ste formato tiene funciones exclusivamente informativas para el correcto f
     onSimulationComplete(records, total);
      setSimulationCompleted(true); // Descomentar si tienes una pantalla de éxito
   };
+  const ValidationGeneral = async () => {
+    setIsLoading(true);
+    setError(null);
+    setValidationResult(null);
 
+    const listaCostos = records
+      .map(r => r.name && r.amount ? `${r.name.trim()}: $${r.amount}` : null)
+      .filter(Boolean)
+      .join('\n');
+
+    // TODO: Obtener la ubicación dinámicamente si es necesario
+    const ubicacion = "Quito, La Carolina";
+    const tipoNegocio="Cafeteria"
+    
+    // El prompt completo para la IA
+    const prompt = `Rol: Actúa como un asesor financiero de élite y analista de riesgos, especializado en la rentabilidad y optimización de costos para ${tipoNegocio} en Quito, Ecuador. Tu análisis debe ser preciso, práctico y basado en datos del mercado local.
+Contexto: Soy un emprendedor con un ${tipoNegocio} en Quito y necesito un diagnóstico financiero experto. Te proporcionaré la ubicación exacta y mi lista de costos fijos mensuales. Tu misión es auditar estos números, identificar puntos ciegos en mi presupuesto y alertarme sobre los riesgos operativos y financieros que estoy corriendo.
+No tomes los salarios como un costo fijos. Vamos ignorar todo lo que tenga que ver con salarios
+Información del Negocio:
+Ubicación (Zona/Barrio en Quito):${ubicacion}
+Costos Fijos Mensuales Identificados:
+${listaCostos}
+Tarea:
+Basado en los costos y la ubicación proporcionada, realiza el siguiente diagnóstico en cuatro pasos:
+Análisis Comparativo de Costos: Evalúa cada costo que te proporcioné. Compáralo con los rangos de mercado específicos para la zona de Quito indicada. Para el campo evaluacion, tu respuesta debe ser estrictamente "Dentro del rango" o "Fuera del rango". Toda la justificación, el análisis cualitativo y el porqué de la evaluación deben ir exclusivamente en el campo comentario_evaluacion.
+Identificación de Costos Fijos Omitidos: Determina qué costos fijos críticos no están en la lista. Para cada uno, describe su importancia estratégica para la sostenibilidad del negocio.
+Análisis de Riesgos por Omisión: Con base en los costos que faltan, detalla los riesgos específicos que la cafetería está corriendo. Para cada riesgo, indica su causa directa (el costo omitido) y el impacto potencial en la operación o finanzas del negocio.
+Plan de Acción y Recomendaciones: Proporciona tres recomendaciones accionables y priorizadas. Cada recomendación debe ser una acción clara para mitigar un riesgo detectado o para optimizar un costo que evaluaste como "Fuera del rango".
+Formato de Respuesta:
+Tu respuesta debe ser únicamente un objeto JSON que siga estrictamente la siguiente estructura. No incluyas ningún texto introductorio, explicaciones o conclusiones fuera del formato JSON.
+
+[
+  "analisis_costos_recibidos": [
+    "alquiler": {
+      "valor_recibido": "$800",
+      "rango_estimado_zona_especifica": "$900 - $1800 (para La Carolina)",
+      "evaluacion": "Fuera del rango",
+      "comentario_evaluacion": "El valor está por debajo del rango de mercado para La Carolina. Esto representa una ventaja competitiva significativa, pero es crucial asegurar que el contrato de arrendamiento sea estable a largo plazo."
+    },
+    "sueldos_personal": {
+      "valor_recibido": "$1100",
+      "rango_estimado_zona_especifica": "$1100 - $1800 (para 2 empleados)",
+      "evaluacion": "Dentro del rango",
+      "comentario_evaluacion": "El valor se encuentra en el límite inferior del rango para dos empleados, cumpliendo con los requisitos legales básicos. La eficiencia y la retención del personal son factores clave a monitorear con este presupuesto."
+    },
+    "servicios_basicos": {
+      "valor_recibido": "$700",
+      "rango_estimado_zona_especifica": "$250 - $500",
+      "evaluacion": "Fuera del rango",
+      "comentario_evaluacion": "El costo excede significativamente el límite superior del rango esperado. Esto es una señal de alerta máxima que apunta a una fuga de capital, probablemente por equipos muy ineficientes, una fuga de agua no detectada o una tarifa eléctrica incorrecta."
+    }
+    "internet": {
+      "valor_recibido": "$50",
+      "rango_estimado_zona_especifica": "$30 - $60",
+      "evaluacion": "Dentro del rango",
+      "comentario_evaluacion": "El costo está dentro del rango esperado para un plan básico de internet, lo cual es adecuado para las operaciones diarias."
+    }
+  ],
+  "plan_de_accion_recomendado": [
+    {
+      "titulo": "Auditoría de Emergencia de Servicios Básicos",
+      "descripcion": "Acción Inmediata: Realizar una revisión exhaustiva del consumo de electricidad y agua ya que su costo está 'Fuera del rango'. Contactar a la Empresa Eléctrica para verificar tarifas y al proveedor de internet para optimizar el plan. Es prioritario encontrar la causa del alto gasto para detener la fuga de dinero.",
+      "prioridad": "Crítica"
+    },
+    {
+      "titulo": "Implementar un Sistema de Control y Prevención",
+      "descripcion": "Contratar un software de punto de venta (POS) para mitigar el riesgo de descontrol financiero. Asignar un 1.5% de las ventas a un fondo para mantenimiento preventivo y así reducir el riesgo de parada operativa.",
+      "prioridad": "Alta"
+    },
+    {
+      "titulo": "Aprovechar la Ventaja Competitiva del Alquiler",
+      "descripcion": "Dado que el alquiler está 'Fuera del rango' (a su favor), intente negociar una extensión del contrato a largo plazo para asegurar esta ventaja. El ahorro mensual obtenido aquí puede ser redirigido para cubrir los costos omitidos, como el marketing o el seguro del negocio.",
+      "prioridad": "Media"
+    }
+  ]
+    ]`;
+
+      try {
+      const res = await fetch("https://backend-costos.onrender.com/analizar", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+
+      if (!res.ok) throw new Error(`Error del servidor: ${res.status}`);
+      
+      const data = await res.json();
+      const content = data.respuesta as string;
+      const parsedContent: FinalAnalysisResult = JSON.parse(content.match(/```(?:json)?([\s\S]*?)```/)?.[1] || content);
+      
+      setFinalAnalysisResult(parsedContent);
+    } catch (err: any) {
+      setError(err.message || "Ocurrió un error al procesar la validación.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
   const handleCloseAndCorrect = () => {
     setIsModalOpen(false);
   };
-
+  
   if (simulationCompleted) {
     return (
       <div className="text-center p-8 bg-green-100 rounded-brand border border-green-300">
-        <FaCheckCircle className="text-5xl text-green-600 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-green-800">¡Proceso Completado!</h3>
-        <p className="text-neutral-600 mt-2">Tus datos han sido validados y el análisis ha finalizado.</p>
+        {isLoading ? (
+        <>
+          <span className="text-6xl animate-pulse">⏳</span>
+          <p className="mt-4 text-xl text-neutral-700">Procesando el análisis, por favor espera...</p>
+        </>
+      ) : finalAnalysisResult ? (
+        <>
+          <FaCheckCircle className="text-5xl text-green-600 mx-auto mb-4" />
+          <h3 className="text-2xl font-bold text-green-800">¡Proceso Completado!</h3>
+          <p className="text-neutral-600 mt-2">Tus datos han sido validados y el análisis ha finalizado.</p>
+          <FinalAnalysisResultDisplay data={finalAnalysisResult} />
+        </>
+      ) : (
+        <p className="text-red-500">Ocurrió un error al obtener los resultados.</p>
+      )}
       </div>
     );
   }
