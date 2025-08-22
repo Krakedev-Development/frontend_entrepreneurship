@@ -1,6 +1,6 @@
 import { StrictMode } from "react";
 
-import Router from "./shared/infrastructure/ui/navigation/Router";
+import Router from "./shared/ui/navigation/Router";
 
 function App() {
   return (
