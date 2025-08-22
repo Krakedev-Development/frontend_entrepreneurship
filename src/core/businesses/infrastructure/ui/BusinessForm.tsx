@@ -47,15 +47,15 @@ const colorOptions = [
     display: <div className="w-full h-8 rounded-md bg-primary-500"></div>,
   },
   {
-    value: "secondary-500",
-    display: <div className="w-full h-8 rounded-md bg-secondary-500"></div>,
-  },
-  {
-    value: "accent-500",
-    display: <div className="w-full h-8 rounded-md bg-accent-500"></div>,
-  },
-  {
     value: "green-500",
+    display: <div className="w-full h-8 rounded-md bg-green-500"></div>,
+  },
+  {
+    value: "yellow-500",
+    display: <div className="w-full h-8 rounded-md bg-yellow-500"></div>,
+  },
+  {
+    value: "orange-500",
     display: <div className="w-full h-8 rounded-md bg-orange-500"></div>,
   },
   {
@@ -136,43 +136,45 @@ export function BusinessForm() {
         </header>
 
         <form onSubmit={handleSave} className="space-y-6">
-          {/* Nombre del Negocio */}
-          <div>
-            <label
-              htmlFor="name"
-              className="block text-sm font-medium text-neutral-700 mb-2"
-            >
-              Nombre del Negocio
-            </label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
-          </div>
+          <div className="grid grid-cols-2 gap-4">
+            {/* Nombre del Negocio */}
+            <div>
+              <label
+                htmlFor="name"
+                className="block text-sm font-medium text-neutral-700 mb-2"
+              >
+                Nombre del Negocio
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleInputChange}
+                className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
 
-          {/* Tipo de Negocio (Caja de Texto) */}
-          <div>
-            <label
-              htmlFor="businessType"
-              className="block text-sm font-medium text-neutral-700 mb-2"
-            >
-              Tipo de Negocio
-            </label>
-            <input
-              type="text"
-              id="businessType"
-              name="businessType"
-              value={formData.businessType}
-              onChange={handleInputChange}
-              placeholder="Ej: Restaurante, Tienda, Consultoría"
-              className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
-              required
-            />
+            {/* Tipo de Negocio (Caja de Texto) */}
+            <div>
+              <label
+                htmlFor="businessType"
+                className="block text-sm font-medium text-neutral-700 mb-2"
+              >
+                Tipo de Negocio
+              </label>
+              <input
+                type="text"
+                id="businessType"
+                name="businessType"
+                value={formData.businessType}
+                onChange={handleInputChange}
+                placeholder="Ej: Restaurante, Tienda, Consultoría"
+                className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
+                required
+              />
+            </div>
           </div>
 
           {/* Ubicación */}
@@ -191,6 +193,28 @@ export function BusinessForm() {
               onChange={handleInputChange}
               className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
             />
+          </div>
+
+          {/* Tamaño del Negocio */}
+          <div>
+            <label
+              htmlFor="sizeId"
+              className="block text-sm font-medium text-neutral-700 mb-2"
+            >
+              Tamaño del Negocio
+            </label>
+            <select
+              id="sizeId"
+              name="sizeId"
+              value={formData.sizeId}
+              onChange={handleInputChange}
+              className="w-full px-4 py-3 border border-neutral-300 rounded-brand focus:outline-none focus:ring-2 focus:ring-primary-500"
+              required
+            >
+              <option value={1}>Pequeño</option>
+              <option value={2}>Mediano</option>
+              <option value={3}>Grande</option>
+            </select>
           </div>
 
           <VisualSelector
