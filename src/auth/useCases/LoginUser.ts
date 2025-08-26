@@ -7,8 +7,8 @@ export class LoginUser {
     this.userService = userService;
   }
 
-  async execute(email: string, password: string) {
-    const user = await this.userService.login(email, password);
+  async execute() {
+    const user = await this.userService.login();
     if (!user) {
       throw new Error("Invalid credentials");
     }

@@ -10,6 +10,7 @@ import { ModuleService } from "../../ModuleService";
 import { GetAllFinancialRecords } from "../../useCases/GetAllFinancialRecords";
 import { BusinessService } from "../../../businesses/BusinessService";
 import { FinancialRecordForm } from "./FinancialRecordForm";
+import type { BusinessDTO } from "../../../businesses/dto/BusinessDTO";
 
 interface SimulationSectionProps {
   moduleContent: ModuleContent;
@@ -29,12 +30,7 @@ export function SimulationSection({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationResult, setValidationResult] =
     useState<ValidationResult | null>(null);
-  const [simulationCompleted, setSimulationCompleted] = useState(false);
-  const [businessInfo, setBusinessInfo] = useState<{
-    name: string;
-    businessType: string;
-    location: string;
-  } | null>(null);
+  const [businessInfo, setBusinessInfo] = useState<BusinessDTO | null>(null);
 
   // --- Cargar información del negocio ---
   useEffect(() => {
@@ -49,9 +45,18 @@ export function SimulationSection({
 
           if (business) {
             setBusinessInfo({
+              id: business.id,
+              userId: business.userId,
               name: business.name,
               businessType: business.businessType,
               location: business.location,
+              sizeId: business.sizeId,
+              createdAt: business.createdAt,
+              icon: business.icon,
+              color: business.color,
+              progress: business.progress,
+              totalModules: business.totalModules,
+              completedModules: business.completedModules,
             });
           }
         } catch (error) {
@@ -122,6 +127,9 @@ export function SimulationSection({
   };
 
   const removeRecord = async (id: number) => {
+    if (records.length <= 1) {
+      return;
+    }
     try {
       const moduleService = ModuleService.getInstance();
       const success = await moduleService.deleteFinancialRecord(id);
@@ -177,16 +185,32 @@ export function SimulationSection({
     const tipoNegocio =
       businessInfo?.businessType || "Tipo de negocio no especificado";
 
+    // TODO: Reemplazar valores hardcodeados por los valores dinámicos
+    let size = "";
+    switch (businessInfo?.sizeId) {
+      case 1:
+        size = "Pequeño";
+        break;
+      case 2:
+        size = "Mediano";
+        break;
+      case 3:
+        size = "Grande";
+        break;
+      default:
+        size = "Pequeño";
+    }
+
     // El prompt completo para la IA
     const prompt = `Rol: Actúa como un auditor de datos financieros y analista de riesgos. Tu especialización es asegurar la calidad y precisión de la información financiera de entrada para emprendimientos en Ecuador, ${ubicacion}, antes de que sea utilizada en un análisis estratégico.
 
-Contexto: Soy un emprendedor con un negocio pequeño de tipo ${tipoNegocio} ubicado en ${ubicacion} y necesito tu ayuda para depurar mi lista de costos mensuales antes de que tu colega, el asesor financiero de élite, realice el diagnóstico completo. Un análisis profundo basado en datos incorrectos, agrupados o mal categorizados sería inútil y me llevaría a tomar decisiones erróneas. Tu misión es auditar mi lista y darme el visto bueno para proceder, o indicarme exactamente qué debo corregir.
+Contexto: Soy un emprendedor con un negocio ${size} de tipo ${tipoNegocio} ubicado en ${ubicacion} y necesito tu ayuda para depurar mi lista de costos mensuales antes de que tu colega, el asesor financiero de élite, realice el diagnóstico completo. Un análisis profundo basado en datos incorrectos, agrupados o mal categorizados sería inútil y me llevaría a tomar decisiones erróneas. Tu misión es auditar mi lista y darme el visto bueno para proceder, o indicarme exactamente qué debo corregir.
 
 Reglas de Validación:
 1.  **Exclusividad de Costos Fijos:** La lista solo debe contener costos fijos, es decir, aquellos que no varían significativamente con el volumen de ventas mes a mes. Costos como 'materia prima', 'compra de inventario', 'insumos' o 'packaging' son costos variables y deben ser marcados como inválidos.
 2.  **Costos Desagregados:** Cada ítem debe representar un único costo. No se aceptan costos agrupados como 'Servicios básicos e internet' o 'Marketing y permisos'. Deben ser listados por separado para un análisis preciso.
 3.  **Especificidad:** No se aceptan costos ambiguos o genéricos como 'Varios', 'Otros gastos' o 'Gastos administrativos'. Cada costo debe ser claramente identificable.
-4. **Exclusión Explícita de Costos obligatorios:** Cualquier costo relacionado con compensación humana debe ser omitido, descartado y/o no incluido obligatorios en los para este análisis específico. Esto incluye pero no se limita a:
+4.  **Exclusión Explícita de Costos obligatorios:** Cualquier costo relacionado con compensación humana debe ser omitido, descartado y/o no incluido en los costos obligatorios para este análisis específico. Esto incluye pero no se limita a:
 
 Sueldos y salarios: Pagos fijos mensuales a empleados
 Honorarios profesionales: Pagos a consultores, asesores o profesionales independientes
@@ -205,7 +229,7 @@ Justificación: Este análisis se enfoca exclusivamente en costos operativos men
 
 5.  **Verificación de Costos obligatorios faltantes:** Basado en el ${tipoNegocio} proporcionado, debes inferir los costos fijos críticos que fueron omitidos y mencionarlos en el resumen (en caso de haber alguno). En caso de existir costos obligatorios faltantes no se podrá proseguir con el analisis por lo que debes ser muy cauteloso al agregar alguno, recuerda que es un negocio pequeño y a lo mejor no es imperativo tener en cuenta estos costos, NO ESTAS OBLIGADO A INCLUIR COSTOS OBLIGATORIOS, SI CONSIDERAS QUE SE A PROPORCIONADO UNA LISTA ACEPTABLE DE COSTOS FIJOS DEJA LA SECCION DE COSTOS OBLIGATORIOS VACIA Y CENTRATE EN VALIDAR SUS VALORES. en tal caso puedes ponerlos en la seccion de recomendados, que no impiden que se prosiga con el analisis.
 6.  **Verificación de Costos recomendados faltantes:** Basado en el ${tipoNegocio} proporcionado, debes inferir los costos fijos no tan importantes (Mejoran eficiencia/rentabilidad pero no son críticos) que fueron omitidos y mencionarlos en el resumen (en caso de haber alguno). Estos costos son meramente informativos para el conocimiento del emprendedor por lo tanto no impiden que se prosiga con el analisis en caso de no ser incluidos.
-7.  **Verificación de costos realistas:** Parte crucial de tu trabajo es identificar los valores ilógicos o fuera del rango aceptable para la ubicacion mencionada. Para conseguir esto debes Comparar con rangos de mercado típicos para la ubicación, Considerar el tamaño/escala del negocio, Verificar coherencia entre costos relacionados. En caso de no cumplir con esta regla el costo debe ser marcado com invalido.
+7.  **Verificación de costos realistas:** Parte crucial de tu trabajo es identificar los valores ilógicos (valores extremadamente altos o bajos). En caso de no cumplir con esta regla el costo debe ser marcado como invalido.
 
 Información a Validar:
 Tipo de Negocio: ${tipoNegocio}
@@ -249,7 +273,7 @@ Formato de Respuesta:
   "costos_obligatorios_faltantes": [
     {
       "nombre": "Costo Obligatorio 1",
-      "descripcion": "Descripción del costo obligatorio que debe incluirse por ley o necesidad operativa.",
+      "descripcion": "Descripción del costo obligatorio que debe incluirse por necesidad operativa.",
       "motivo_critico": "Razón por la cual este costo es crítico y obligatorio para el funcionamiento del negocio."
     },
     {
@@ -276,7 +300,7 @@ Formato de Respuesta:
   }
 }
 
-Nota: ste formato tiene funciones exclusivamente informativas para el correcto formato de la respuesta. Por ningún motivo debe ser la respuesta recibida. Los textos genéricos deben ser reemplazados con contenido específico.
+Nota: Este formato tiene funciones exclusivamente informativas para el correcto formato de la respuesta. Por ningún motivo debe ser la respuesta recibida. Los textos genéricos deben ser reemplazados con contenido específico.
 
   `;
 
@@ -309,32 +333,16 @@ Nota: ste formato tiene funciones exclusivamente informativas para el correcto f
     executeValidation();
   };
 
-  const handleProceedToAnalysis = () => {
-    // Aquí es donde llamarías al SIGUIENTE paso (el análisis con el prompt anterior)
-    // Por ahora, simplemente cerramos el modal y completamos la simulación.
+  const handleProceedToAnalysis = () => {    
     console.log("Procediendo al análisis principal con datos validados...");
     setIsModalOpen(false);
     onSimulationComplete(records, total);
-    setSimulationCompleted(true); // Descomentar si tienes una pantalla de éxito
+    
   };
 
   const handleCloseAndCorrect = () => {
     setIsModalOpen(false);
   };
-
-  if (simulationCompleted) {
-    return (
-      <div className="text-center p-8 bg-green-100 rounded-brand border border-green-300">
-        <FaCheckCircle className="text-5xl text-green-600 mx-auto mb-4" />
-        <h3 className="text-2xl font-bold text-green-800">
-          ¡Proceso Completado!
-        </h3>
-        <p className="text-neutral-600 mt-2">
-          Tus datos han sido validados y el análisis ha finalizado.
-        </p>
-      </div>
-    );
-  }
 
   if (isLoadingRecords) {
     return (

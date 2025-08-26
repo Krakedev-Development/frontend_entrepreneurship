@@ -10,7 +10,7 @@ interface ValidationResultDisplayProps {
 
 export const ValidationResultDisplay: React.FC<ValidationResultDisplayProps> = ({ data }) => {
   return (
-    <div className="space-y-6 text-left max-h-[70vh] overflow-y-auto p-1">
+    <div className="space-y-6 text-left p-4">
   
 
       {/* 2. Validación de Costos Recibidos */}

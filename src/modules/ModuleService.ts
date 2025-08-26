@@ -9,7 +9,13 @@ export class ModuleService {
       1,
       "Costos Fijos",
       "Aprende los conceptos básicos de costos empresariales",
-      "https://www.youtube.com/embed/NVzQ860WLGo",      
+      "https://www.youtube.com/embed/_ZQe_6JV4Ys?si=PkPXOObKR2CC7KXa",
+    ),
+    new ModuleContent(
+      2,
+      "Modulo 2",
+      "Modulo 2",
+      null,      
     )
   ];
 
@@ -37,7 +43,7 @@ export class ModuleService {
 
   async addFinancialRecord(record: Omit<FinancialRecord, 'id'>): Promise<FinancialRecord> {
     const newRecord = new FinancialRecord(
-      this.financialRecords.length + 1,
+      Date.now(),
       record.moduleId,
       record.name,
       record.amount,

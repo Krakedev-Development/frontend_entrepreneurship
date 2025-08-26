@@ -18,13 +18,10 @@ export function LoginPage() {
     const loginUseCase = new LoginUser(authService);
 
     try {
-      // Pasamos el 'username' como si fuera el email a nuestro caso de uso.
-      const user = await loginUseCase.execute(username, password);
+      const user = await loginUseCase.execute();
       if (user) {
         navigate("/businesses");
-        // Aquí podrías redirigir al usuario o actualizar el estado global.
       } else {
-        // Usamos el mensaje de error de nuestra lógica de negocio.
         setError("Usuario o contraseña incorrectos.");
       }
     } catch (e: any) {

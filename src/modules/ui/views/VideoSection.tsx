@@ -1,5 +1,5 @@
 import { FaCheckCircle, FaGraduationCap } from "react-icons/fa";
-import { ModuleConcept } from "./ModuleConcept";
+import { ModuleConcept } from "../components/ModuleConcept";
 import clsx from "clsx";
 import type { ModuleContent } from "../../entities/ModuleContent";
 import { useState } from "react";
@@ -68,7 +68,7 @@ export function VideoSection({ moduleContent, onVideoComplete }: VideoSectionPro
                             'opacity-100': videoState === 'loaded' || videoState === 'completed'
                         }
                     )}
-                    src={moduleContent.resourceUrl}
+                    src={moduleContent.resourceUrl || undefined}
                     title="Video Educativo"
                     frameBorder="0"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
