@@ -125,7 +125,7 @@ body {
   position: absolute;
   /* background: linear-gradient(45deg, #3b82f6, #10b981); */
   border-radius: 4px;
-  z-index: 1;
+  z-index: -1;
 }
 
 .path-completed {
@@ -161,15 +161,15 @@ body {
 
 .path-h-fw {
   top: 50%;
-  left: 90%;
-  width: 30%;
+  left: 100%;
+  width: 1.5rem;
   height: 4px;
 }
 
 .path-h-bw {
   top: 50%;
-  left: -20%;
-  width: 30%;
+  left: -1.5rem;
+  width: 1.5rem;
   height: 4px;
 }
 
