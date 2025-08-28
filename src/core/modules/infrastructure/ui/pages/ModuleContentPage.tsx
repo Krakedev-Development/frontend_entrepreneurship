@@ -14,6 +14,7 @@ import { GetModuleContent } from '../../../application/useCase/GetModuleContent'
 import { VideoSection } from '../components/VideoSection';
 import { SimulationSection } from '../components/SimulationSection';
 import { ResultsSection } from '../components/ResultSection';
+import { useAuth } from '../../../../auth/infrastructure/hooks/useAuth';
 
 // Tipos para el progreso del módulo
 interface ModuleProgress {
@@ -25,6 +26,7 @@ interface ModuleProgress {
 export function ModuleContentPage() {
   const navigate = useNavigate();
   const { businessId, moduleId } = useParams<{ businessId: string; moduleId: string }>();
+  const { user } = useAuth();
   const [currentSection, setCurrentSection] = useState<'learn' | 'simulate' | 'results'>('learn');
   const [moduleContent, setModuleContent] = useState<ModuleContent>({
     id: 1,
@@ -39,6 +41,7 @@ export function ModuleContentPage() {
     simulationCompleted: false,
     resultsViewed: false
   });
+  const [hasExistingValidation, setHasExistingValidation] = useState(false);
 
   // Crear navItems dinámicamente basado en el progreso y estado de carga
   const navItems: NavItem[] = [
@@ -136,7 +139,7 @@ export function ModuleContentPage() {
   const handleNext = () => {
     if (currentSection === 'learn' && progress.videoCompleted) {
       setCurrentSection('simulate');
-    } else if (currentSection === 'simulate' && progress.simulationCompleted) {
+    } else if (currentSection === 'simulate' && (progress.simulationCompleted || hasExistingValidation)) {
       setCurrentSection('results');
       setProgress(prev => ({ ...prev, resultsViewed: true }));
     } else if (currentSection === 'results' && progress.resultsViewed) {
@@ -158,6 +161,7 @@ export function ModuleContentPage() {
           <SimulationSection
             moduleContent={moduleContent}
             onSimulationComplete={handleSimulationComplete}
+            onExistingValidationFound={setHasExistingValidation}
           />
         );
       case 'results':
@@ -191,7 +195,7 @@ export function ModuleContentPage() {
     // Lógica específica por sección
     if (currentSection === 'learn' && progress.videoCompleted) {
       return 'Ir a Simulación';
-    } else if (currentSection === 'simulate' && progress.simulationCompleted) {
+    } else if (currentSection === 'simulate' && (progress.simulationCompleted || hasExistingValidation)) {
       return 'Ver Resultados';
     } else if (currentSection === 'results') {
       return 'Continuar';
@@ -211,7 +215,7 @@ export function ModuleContentPage() {
     
     // Lógica específica por sección
     if (currentSection === 'learn') return progress.videoCompleted;
-    if (currentSection === 'simulate') return progress.simulationCompleted;
+    if (currentSection === 'simulate') return progress.simulationCompleted || hasExistingValidation;
     return true; // Results section always allows next
   };
 
@@ -235,7 +239,7 @@ export function ModuleContentPage() {
 
   return (
     <>
-      <ModuleHeader title="Educación Financiera" userName="Emprendedor" />
+              <ModuleHeader title="Educación Financiera" userName={user?.nombreCompleto || "Usuario"} />
       <div className="bg-white p-6 sm:p-8 w-full max-w-4xl mx-auto my-8 rounded-brand shadow-brand-lg">
 
         {/* Mostrar información del módulo */}

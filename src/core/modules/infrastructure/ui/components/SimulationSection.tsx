@@ -11,6 +11,7 @@ import { AiAnalysisService, type BusinessInfo, type CostRecord } from "../../ada
 import { ValidationResultRepositoryApi } from "../../adapters/ValidationResultRepositoryApi";
 import { ModuleRepositoryApi } from "../../adapters/ModuleRepositoryApi";
 import { FinancialRecordRepositoryApi } from "../../adapters/FinancialRecordRepositoryApi";
+import { AnalyzedCostResultRepositoryApi, type CreateAnalyzedCostResultRequest } from "../../adapters/AnalyzedCostResultRepositoryApi";
 
 // Interface para la respuesta del negocio desde el backend
 interface BusinessApiResponse {
@@ -150,9 +151,10 @@ function FinancialRecordForm({
 interface SimulationSectionProps {
   moduleContent: ModuleContent;
   onSimulationComplete: (records: FinancialRecord[], total: number) => void;
+  onExistingValidationFound?: (hasValidation: boolean) => void;
 }
 
-export function SimulationSection({ moduleContent, onSimulationComplete }: SimulationSectionProps) {
+export function SimulationSection({ moduleContent, onSimulationComplete, onExistingValidationFound }: SimulationSectionProps) {
   // Obtener los parámetros de la URL
   const { businessId, moduleId } = useParams<{ businessId: string; moduleId: string }>();
   
@@ -168,6 +170,8 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [validationResult, setValidationResult] = useState<ValidationResult | null>(null);
   const [simulationCompleted, setSimulationCompleted] = useState(false);
+  const [hasExistingValidation, setHasExistingValidation] = useState(false);
+  const [analyzedCostsToSave, setAnalyzedCostsToSave] = useState<CreateAnalyzedCostResultRequest[] | null>(null);
 
   // Cargar registros guardados al montar el componente
   useEffect(() => {
@@ -194,15 +198,50 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
           // ✅ EXISTEN REGISTROS: Se cargan automáticamente
           console.log(`✅ [FRONTEND] Se encontraron ${savedRecords.length} registros guardados - CARGANDO AUTOMÁTICAMENTE`);
           setRecords(savedRecords);
+          
+          // Verificar si también existe validación para este negocio y módulo
+          try {
+            const existingValidation = await ValidationResultRepositoryApi.getValidationResultByBusinessAndModule(
+              parseInt(businessId),
+              parseInt(moduleId)
+            );
+            
+            if (existingValidation) {
+              setHasExistingValidation(true);
+              
+              // Convertir y establecer el resultado de validación
+              const validationDataForModal = {
+                validacion_de_costos: existingValidation.costosValidados || [],
+                costos_obligatorios_faltantes: existingValidation.costosFaltantes || [],
+                costos_recomendados_faltantes: [],
+                resumen_validacion: existingValidation.resumenValidacion || {
+                  puntuacion_global: existingValidation.puntuacionGlobal || 0,
+                  puede_proseguir_analisis: existingValidation.puedeProseguirAnalisis || false
+                }
+              };
+              
+              setValidationResult(validationDataForModal);
+              
+              // Notificar al componente padre que hay validación existente
+              onExistingValidationFound?.(true);
+            } else {
+              setHasExistingValidation(false);
+              onExistingValidationFound?.(false);
+            }
+          } catch (validationError) {
+            setHasExistingValidation(false);
+            onExistingValidationFound?.(false);
+          }
         } else {
           // ❌ NO EXISTEN REGISTROS: El usuario debe agregar costos manualmente
-          console.log(`ℹ️ [FRONTEND] NO se encontraron registros guardados - EL USUARIO DEBE AGREGAR COSTOS MANUALMENTE`);
           setRecords([createNewRecord()]);
+          setHasExistingValidation(false);
+          onExistingValidationFound?.(false);
         }
       } catch (error) {
-        console.error('❌ [FRONTEND] Error al verificar registros guardados:', error);
-        console.log(`ℹ️ [FRONTEND] Error en verificación - EL USUARIO DEBE AGREGAR COSTOS MANUALMENTE`);
         setRecords([createNewRecord()]);
+        setHasExistingValidation(false);
+        onExistingValidationFound?.(false);
       } finally {
         setIsLoadingRecords(false);
       }
@@ -238,20 +277,14 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
     if (!businessId || !moduleId) return;
 
     try {
-      console.log('💾 [FRONTEND] Guardando registros después de validación exitosa...');
-      
       // Filtrar registros que tienen datos
       const validRecords = recordsToSave.filter(r => r.name.trim() && r.amount.trim());
       
       if (validRecords.length > 0) {
-        const savedRecords = await FinancialRecordRepositoryApi.saveRecords(validRecords);
-        console.log('✅ [FRONTEND] Registros guardados después de validación:', savedRecords.length);
-        
-        // Los registros se guardan como nuevos, no necesitamos actualizar IDs
-        console.log('✅ [FRONTEND] Registros financieros guardados exitosamente en la BD');
+        await FinancialRecordRepositoryApi.saveRecords(validRecords);
       }
     } catch (error) {
-      console.error('❌ [FRONTEND] Error al guardar registros después de validación:', error);
+      // Error silencioso - no bloqueamos el flujo
     }
   };
 
@@ -269,9 +302,8 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
     if (id && id > 0) {
       try {
         await FinancialRecordRepositoryApi.deleteRecord(id);
-        console.log('✅ [FRONTEND] Registro eliminado de la BD:', id);
       } catch (error) {
-        console.error('❌ [FRONTEND] Error al eliminar registro de la BD:', error);
+        // Error silencioso
       }
     }
     
@@ -301,7 +333,64 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
     setValidationResult(null);
 
     try {
-      console.log('🚀 [FRONTEND] Iniciando flujo optimizado de análisis...');
+      // Si ya sabemos que hay validación existente, recuperar desde BD
+      if (hasExistingValidation && businessId && moduleId) {
+        // Intentar recuperar resultado de validación desde la BD
+        const existingValidation = await ValidationResultRepositoryApi.getValidationResultByBusinessAndModule(
+          parseInt(businessId),
+          parseInt(moduleId)
+        );
+        
+        if (existingValidation) {
+          // Convertir el resultado de la BD al formato esperado por el modal
+          const validationDataForModal = {
+            validacion_de_costos: existingValidation.costosValidados || [],
+            costos_obligatorios_faltantes: existingValidation.costosFaltantes || [],
+            costos_recomendados_faltantes: [], // Campo requerido por la interfaz
+            resumen_validacion: existingValidation.resumenValidacion || {
+              puntuacion_global: existingValidation.puntuacionGlobal || 0,
+              puede_proseguir_analisis: existingValidation.puedeProseguirAnalisis || false
+            }
+          };
+          
+          setValidationResult(validationDataForModal);
+          return;
+        } else {
+          setHasExistingValidation(false);
+          onExistingValidationFound?.(false);
+        }
+      }
+      
+      // Verificar si hay registros financieros guardados pero no validación conocida
+      const hasExistingRecords = records.some(r => r.id && r.id > 0);
+      
+      if (hasExistingRecords && businessId && moduleId) {
+        // Intentar recuperar resultado de validación desde la BD
+        const existingValidation = await ValidationResultRepositoryApi.getValidationResultByBusinessAndModule(
+          parseInt(businessId),
+          parseInt(moduleId)
+        );
+        
+        if (existingValidation) {
+          // Convertir el resultado de la BD al formato esperado por el modal
+          const validationDataForModal = {
+            validacion_de_costos: existingValidation.costosValidados || [],
+            costos_obligatorios_faltantes: existingValidation.costosFaltantes || [],
+            costos_recomendados_faltantes: [], // Campo requerido por la interfaz
+            resumen_validacion: existingValidation.resumenValidacion || {
+              puntuacion_global: existingValidation.puntuacionGlobal || 0,
+              puede_proseguir_analisis: existingValidation.puedeProseguirAnalisis || false
+            }
+          };
+          
+          setValidationResult(validationDataForModal);
+          setHasExistingValidation(true);
+          onExistingValidationFound?.(true);
+          return;
+        }
+      }
+      
+      // Si no hay registros existentes o no se encontró validación, proceder con IA
       
       // Convertir records a formato esperado por el servicio
       const costs: CostRecord[] = records
@@ -317,15 +406,10 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
         ubicacion: businessInfo.ubicacion
       };
 
-      console.log('📊 [FRONTEND] Costos a enviar:', costs);
-      console.log('🏢 [FRONTEND] Información del negocio a enviar:', businessInfoForAnalysis);
-      console.log(`🏢 [FRONTEND] Usando información del negocio: ${businessInfo.tipoNegocio} (${businessInfo.tamano}) en ${businessInfo.ubicacion}`);
-
       // Usar el nuevo servicio optimizado
       const result = await aiAnalysisService.completeAnalysis(costs, businessInfoForAnalysis);
       
       if (result.success && 'validation' in result) {
-        console.log('✅ [FRONTEND] Análisis completado exitosamente:', result);
         
         // Usar el resultado de validación para el modal
         if (result.validation?.data) {
@@ -334,8 +418,6 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
           // Guardar el resultado de validación en la base de datos
           try {
             if (businessId && moduleId) {
-              console.log('💾 [FRONTEND] Guardando resultado de validación en BD...');
-              
               const validationData = {
                 negocioId: parseInt(businessId),
                 moduloId: parseInt(moduleId),
@@ -347,25 +429,34 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
               };
               
               await ValidationResultRepositoryApi.saveValidationResult(validationData);
-              console.log('✅ [FRONTEND] Resultado de validación guardado exitosamente');
+              
+              // Almacenar los resultados del análisis comparativo de mercado en el estado (no guardar aún)
+              if (result.analysis?.data?.analisis_costos) {
+                const analyzedCostsData = Object.entries(result.analysis.data.analisis_costos).map(([costName, costData]: [string, any]) => ({
+                  analysisId: parseInt(businessId), // Usar businessId como analysisId temporal
+                  costName: costName,
+                  receivedValue: costData.valor_recibido || '',
+                  estimatedRange: costData.rango_estimado_zona_especifica || '',
+                  evaluation: costData.evaluacion || '',
+                  comment: costData.analisis || ''
+                }));
+                
+                setAnalyzedCostsToSave(analyzedCostsData);
+              }
               
               // Los registros financieros se guardarán cuando se presione "Continuar al Análisis"
             }
           } catch (saveError) {
-            console.error('❌ [FRONTEND] Error al guardar resultado de validación:', saveError);
             // No bloqueamos el flujo si falla el guardado
           }
         }
         
         // Análisis completado exitosamente
-        console.log('✅ [FRONTEND] Análisis completado exitosamente');
       } else {
-        console.log('❌ [FRONTEND] Análisis falló:', result);
         setError((result as any).error || "Error en el análisis");
       }
       
     } catch (err: any) {
-      console.error('💥 [FRONTEND] Error en análisis optimizado:', err);
       setError(err.message || "Ocurrió un error al procesar el análisis.");
     } finally {
       setIsLoading(false);
@@ -379,25 +470,33 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
   };
   
   const handleProceedToAnalysis = async () => {
-    // Guardar los registros financieros cuando se presione "Continuar al Análisis"
-    try {
-      console.log("💾 [FRONTEND] Guardando registros financieros antes de continuar al análisis...");
-      await saveRecordsOnValidationSuccess(records);
-      console.log("✅ [FRONTEND] Registros financieros guardados exitosamente");
-    } catch (error) {
-      console.error("❌ [FRONTEND] Error al guardar registros financieros:", error);
-      // Continuar con el flujo aunque falle el guardado
-    }
+    setIsLoading(true); // Mostrar estado de carga
     
-    // Cerrar modal y proceder a la vista de resultados
-    console.log("Procediendo a la vista de resultados...");
-    setIsModalOpen(false);
-    setSimulationCompleted(true);
+    try {
+      // Guardar los registros financieros cuando se presione "Continuar al Análisis"
+      await saveRecordsOnValidationSuccess(records);
+      
+      // Guardar los resultados de análisis comparativo de mercado si están disponibles
+      if (analyzedCostsToSave && analyzedCostsToSave.length > 0) {
+        await AnalyzedCostResultRepositoryApi.createMultipleAnalyzedCostResults(analyzedCostsToSave);
+        setAnalyzedCostsToSave(null); // Limpiar el estado después de guardar
+      }
+      
+      // Cerrar modal y proceder a la vista de resultados
+      setIsModalOpen(false);
+      setSimulationCompleted(true);
+    } catch (error) {
+      setError('Error al guardar los datos. Por favor, inténtalo de nuevo.');
+    } finally {
+      setIsLoading(false); // Ocultar estado de carga
+    }
   };
 
   const handleCloseAndCorrect = () => {
     setIsModalOpen(false);
   };
+
+
   
   if (simulationCompleted) {
     return (
@@ -451,17 +550,15 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
           </div>
         )}
 
-
-        
-                 {/* Mostrar información del negocio cuando esté disponible */}
-         {businessInfo && (
-           <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
-             <div className="flex items-center gap-2 text-green-700">
-               <span className="text-sm font-medium">Negocio:</span>
-               <span className="text-sm">{businessInfo.tipoNegocio} ({businessInfo.tamano}) en {businessInfo.ubicacion}</span>
-             </div>
-           </div>
-         )}
+        {/* Indicador de validación existente */}
+        {hasExistingValidation && !isLoadingRecords && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center gap-2 text-green-700">
+              <FaCheckCircle className="text-green-600" />
+              <span className="text-sm font-medium">✅ Validación existente disponible - Puedes continuar directamente</span>
+            </div>
+          </div>
+        )}
         
         <FinancialRecordForm
           records={records}
@@ -477,10 +574,12 @@ export function SimulationSection({ moduleContent, onSimulationComplete }: Simul
             className={`font-bold py-3 px-6 rounded-brand shadow-lg transition-colors ${
               isLoadingBusiness || !businessInfo || isLoadingRecords
                 ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                : 'bg-green-600 hover:bg-green-700 text-white'
+                : hasExistingValidation 
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                  : 'bg-green-600 hover:bg-green-700 text-white'
             }`}
           >
-            {isLoadingBusiness || isLoadingRecords ? 'Cargando...' : 'Ejecutar Análisis'}
+            {isLoadingBusiness || isLoadingRecords ? 'Cargando...' : hasExistingValidation ? 'Re-ejecutar Análisis' : 'Ejecutar Análisis'}
           </button>
           {businessError && (
             <p className="text-red-500 text-sm mt-2 text-right">

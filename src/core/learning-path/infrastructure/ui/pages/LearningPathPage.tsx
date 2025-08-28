@@ -6,6 +6,7 @@ import { GetLearningPath } from '../../../application/useCase/GetLearningPath';
 import { LearningPathGrid } from '../components/LearningPathGrid';
 import { StatusLegend } from '../components/StatusLegend';
 import { ModuleHeader } from '../../../../../shared/infrastructure/components/Header';
+import { useAuth } from '../../../../auth/infrastructure/hooks/useAuth';
 import { Link, useParams } from 'react-router-dom';
 
 
@@ -17,6 +18,7 @@ import { Link, useParams } from 'react-router-dom';
 export const LearningPathPage: React.FC = () => {
     // El nombre 'businessId' debe coincidir con el que definiste en routes.ts (':businessId')
     const { businessId } = useParams<{ businessId: string }>();
+    const { user } = useAuth();
 
     const [modules, setModules] = useState<Module[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -68,7 +70,7 @@ export const LearningPathPage: React.FC = () => {
     <div className="h-screen flex flex-col bg-gradient-to-br from-blue-50 to-indigo-100">
       
       {/* 1. Header: Ocupa su espacio natural (que ya redujimos) */}
-      <ModuleHeader title="Módulo de Educación Financiera" userName="Emprendedor" />
+      <ModuleHeader title="Módulo de Educación Financiera" userName={user?.nombreCompleto || "Usuario"} />
       
       {/* 2. Contenedor Principal: Crece para ocupar el espacio restante y centra su contenido */}
       <main className="flex-1 flex flex-col items-center justify-center p-4">
