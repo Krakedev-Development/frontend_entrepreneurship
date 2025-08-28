@@ -33,50 +33,16 @@ export class ApiClient {
       },
     };
 
-    // Log de la petición saliente
-    console.log('🚀 [FRONTEND] Petición saliente:', {
-      method: options.method || 'GET',
-      url,
-      headers: config.headers,
-      body: options.body ? JSON.parse(options.body as string) : undefined,
-    });
-
     try {
       const response = await fetch(url, config);
-      
-      // Log de la respuesta recibida
-      console.log('📥 [FRONTEND] Respuesta recibida:', {
-        status: response.status,
-        statusText: response.statusText,
-        url: response.url,
-        headers: Object.fromEntries(response.headers.entries()),
-      });
 
       if (!response.ok) {
-        console.error('❌ [FRONTEND] Error HTTP:', {
-          status: response.status,
-          statusText: response.statusText,
-          url,
-        });
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
       const data = await response.json();
-      
-      // Log de los datos recibidos
-      console.log('✅ [FRONTEND] Datos recibidos:', {
-        endpoint,
-        data,
-        timestamp: new Date().toISOString(),
-      });
-      
       return data;
     } catch (error) {
-      console.error('💥 [FRONTEND] Error en petición API:', {
-        endpoint,
-        error: error instanceof Error ? error.message : error,
-        timestamp: new Date().toISOString(),
-      });
       throw error;
     }
   }

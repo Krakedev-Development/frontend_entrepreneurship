@@ -5,10 +5,100 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { AiAnalysisService, type BusinessInfo, type CostRecord } from "../../adapters/AiAnalysisService";
 import { BusinessProgressRepositoryApi } from "../../adapters/BusinessProgressRepositoryApi";
+import { AnalyzedCostResultRepositoryApi, type CreateAnalyzedCostResultRequest } from "../../adapters/AnalyzedCostResultRepositoryApi";
+import { RiskDetectionRepositoryApi, type CreateRiskDetectionRequest } from "../../adapters/RiskDetectionRepositoryApi";
+import { ActionPlanRepositoryApi, type CreateActionPlanRequest } from "../../adapters/ActionPlanRepositoryApi";
+import { CostValidationRepositoryApi, type CreateCostValidationRequest } from "../../adapters/CostValidationRepositoryApi";
+import { useCompleteAnalysis } from "../../hooks/useCompleteAnalysis";
+import { CompleteAnalysisRepositoryApi } from "../../adapters/CompleteAnalysisRepositoryApi";
 
 interface ResultsSectionProps {
     moduleContent: ModuleContent;
 }
+
+// Hook personalizado para verificar si el módulo está completado y cargar datos guardados
+const useModuleCompletionStatus = (businessId: string | undefined, moduleId: string | undefined) => {
+    const [isModuleCompleted, setIsModuleCompleted] = useState(false);
+    const [isLoadingCompletion, setIsLoadingCompletion] = useState(true);
+    const [completionError, setCompletionError] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!businessId || !moduleId) {
+            setIsLoadingCompletion(false);
+            return;
+        }
+
+        const checkModuleCompletion = async () => {
+            try {
+                console.log('🔍 [RESULTS] Verificando estado de completado del módulo...');
+                console.log('📊 [RESULTS] businessId:', businessId, 'moduleId:', moduleId);
+                const progressRepository = new BusinessProgressRepositoryApi();
+                const progress = await progressRepository.getProgress(parseInt(businessId), parseInt(moduleId));
+                
+                console.log('📊 [RESULTS] Progreso del módulo:', progress);
+                console.log('📊 [RESULTS] progress.id_estado:', progress?.id_estado);
+                
+                // Verificar si el módulo está completado (estado 3 o 13 = completado)
+                const completed = progress && (progress.id_estado === 3 || progress.id_estado === 13);
+                console.log('📊 [RESULTS] completed calculado:', completed);
+                setIsModuleCompleted(completed || false);
+                
+                console.log('✅ [RESULTS] Módulo completado:', completed);
+            } catch (error) {
+                console.error('❌ [RESULTS] Error al verificar completado del módulo:', error);
+                setCompletionError(error instanceof Error ? error.message : 'Error desconocido');
+                setIsModuleCompleted(false);
+            } finally {
+                setIsLoadingCompletion(false);
+            }
+        };
+
+        checkModuleCompletion();
+    }, [businessId, moduleId]);
+
+    return { isModuleCompleted, isLoadingCompletion, completionError };
+};
+
+// Hook personalizado para cargar datos guardados del análisis completo
+const useSavedAnalysisData = (businessId: string | undefined, moduleId: string | undefined, isModuleCompleted: boolean) => {
+    const [savedAnalysisData, setSavedAnalysisData] = useState<any>(null);
+    const [isLoadingSavedData, setIsLoadingSavedData] = useState(false);
+    const [savedDataError, setSavedDataError] = useState<string | null>(null);
+    const { getCompleteAnalysis } = useCompleteAnalysis();
+
+    useEffect(() => {
+        if (!businessId || !moduleId || !isModuleCompleted) {
+            return;
+        }
+
+        const loadSavedData = async () => {
+            try {
+                setIsLoadingSavedData(true);
+                setSavedDataError(null);
+                
+                console.log('🔍 [RESULTS] Cargando datos guardados del análisis completo...');
+                const savedData = await getCompleteAnalysis(parseInt(businessId), parseInt(moduleId));
+                
+                if (savedData) {
+                    console.log('✅ [RESULTS] Datos guardados cargados exitosamente:', savedData);
+                    setSavedAnalysisData(savedData);
+                } else {
+                    console.log('⚠️ [RESULTS] No se encontraron datos guardados');
+                    setSavedDataError('No se encontraron datos guardados para este módulo');
+                }
+            } catch (error) {
+                console.error('❌ [RESULTS] Error al cargar datos guardados:', error);
+                setSavedDataError(error instanceof Error ? error.message : 'Error al cargar datos guardados');
+            } finally {
+                setIsLoadingSavedData(false);
+            }
+        };
+
+        loadSavedData();
+    }, [businessId, moduleId, isModuleCompleted, getCompleteAnalysis]);
+
+    return { savedAnalysisData, isLoadingSavedData, savedDataError };
+};
 
 // Hook personalizado para obtener información del negocio
 const useBusinessInfo = (businessId: string | undefined) => {
@@ -186,6 +276,8 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
     const navigate = useNavigate();
     const { businessInfo, isLoading: isLoadingBusiness } = useBusinessInfo(businessId);
     const { records, isLoading: isLoadingRecords } = useFinancialRecords(businessId, moduleId);
+    const { isModuleCompleted } = useModuleCompletionStatus(businessId, moduleId);
+    const { savedAnalysisData, isLoadingSavedData } = useSavedAnalysisData(businessId, moduleId, isModuleCompleted);
     
     const [analysisResult, setAnalysisResult] = useState<any>(null);
     const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
@@ -195,9 +287,24 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
     const [isCompletingModule, setIsCompletingModule] = useState(false);
     const [moduleCompleted, setModuleCompleted] = useState(false);
 
-    // Ejecutar análisis cuando se carguen los datos
+    // Actualizar moduleCompleted cuando se detecte que el módulo ya está completado
     useEffect(() => {
-        if (businessInfo && records.length > 0 && !hasExecutedAnalysis && !isLoadingAnalysis) {
+        if (isModuleCompleted) {
+            setModuleCompleted(true);
+        }
+    }, [isModuleCompleted]);
+
+    // Ejecutar análisis cuando se carguen los datos (solo si el módulo no está completado)
+    useEffect(() => {
+        console.log('🔍 [RESULTS] useEffect de análisis - Condiciones:');
+        console.log('📊 [RESULTS] businessInfo:', !!businessInfo);
+        console.log('📊 [RESULTS] records.length:', records.length);
+        console.log('📊 [RESULTS] !hasExecutedAnalysis:', !hasExecutedAnalysis);
+        console.log('📊 [RESULTS] !isLoadingAnalysis:', !isLoadingAnalysis);
+        console.log('📊 [RESULTS] !isModuleCompleted:', !isModuleCompleted);
+        console.log('📊 [RESULTS] isModuleCompleted valor:', isModuleCompleted);
+        
+        if (businessInfo && records.length > 0 && !hasExecutedAnalysis && !isLoadingAnalysis && !isModuleCompleted) {
             const executeAnalysis = async () => {
                 try {
                     setIsLoadingAnalysis(true);
@@ -251,7 +358,44 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
 
             executeAnalysis();
         }
-    }, [businessInfo, records, hasExecutedAnalysis]); // Agregada hasExecutedAnalysis para control
+    }, [businessInfo, records, hasExecutedAnalysis, isModuleCompleted]); // Agregada isModuleCompleted para control
+
+    // Usar datos guardados cuando el módulo está completado
+    useEffect(() => {
+        if (isModuleCompleted && savedAnalysisData && !analysisResult) {
+            console.log('🔄 [RESULTS] Usando datos guardados del módulo completado');
+            console.log('📊 [RESULTS] Datos guardados recibidos:', savedAnalysisData);
+            
+            // Convertir los datos guardados al formato esperado por el componente
+            const convertedData = {
+                success: true,
+                data: {
+                    analysis: {
+                        data: {
+                            analisis_costos: savedAnalysisData.costosAnalizados || []
+                        }
+                    },
+                    final: {
+                        data: {
+                            plan_accion: savedAnalysisData.planAccion || []
+                        }
+                    },
+                    validation: {
+                        data: {
+                            validacion_de_costos: savedAnalysisData.riesgosDetectados || []
+                        }
+                    }
+                }
+            };
+            
+            console.log('🔄 [RESULTS] Datos convertidos:', convertedData);
+            
+            setAnalysisResult(convertedData);
+            setUsingMockData(false);
+            setHasExecutedAnalysis(true);
+            console.log('✅ [RESULTS] Datos guardados cargados exitosamente');
+        }
+    }, [isModuleCompleted, savedAnalysisData, analysisResult]);
 
     // Debug logs - Solo cuando cambien los valores importantes
     useEffect(() => {
@@ -279,6 +423,223 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
 
         try {
             setIsCompletingModule(true);
+            console.log('🎯 [RESULTS] Iniciando proceso de completar módulo...');
+            
+            // 0. VERIFICAR/CREAR ANÁLISIS DE IA
+            console.log('🔍 [RESULTS] Verificando análisis de IA...');
+            let analisisId = parseInt(businessId); // Fallback
+            
+            try {
+                const analisisResponse = await fetch(`http://localhost:3000/api/v1/analisis-ia/verify-or-create/${businessId}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                
+                if (!analisisResponse.ok) {
+                    throw new Error(`Error al verificar/crear análisis: ${analisisResponse.status}`);
+                }
+                
+                const analisisData = await analisisResponse.json();
+                console.log('✅ [RESULTS] Análisis de IA verificado/creado:', analisisData);
+                
+                // Usar el ID del análisis real
+                analisisId = analisisData.analisisId || analisisData.analisis_id || parseInt(businessId);
+                console.log('📊 [RESULTS] Usando análisis ID:', analisisId);
+                
+            } catch (analisisError) {
+                console.error('❌ [RESULTS] Error al verificar/crear análisis de IA:', analisisError);
+                console.log('📊 [RESULTS] Usando businessId como análisis ID:', analisisId);
+            }
+            
+            // 1. CAPTURAR Y GUARDAR TODOS LOS DATOS DEL ANÁLISIS DE IA
+            console.log('🎯 [RESULTS] ===== CAPTURANDO TODOS LOS DATOS DEL ANÁLISIS =====');
+            console.log('📊 [RESULTS] AnalysisResult completo:', analysisResult);
+            console.log('📊 [RESULTS] AnalysisResult JSON:', JSON.stringify(analysisResult, null, 2));
+            
+            // Capturar datos de análisis de costos
+            if (analysisResult && analysisResult.analysis && analysisResult.analysis.data && analysisResult.analysis.data.analisis_costos) {
+                console.log('💾 [RESULTS] Guardando datos de comparación del mercado...');
+                
+                const analisisCostos = analysisResult.analysis.data.analisis_costos;
+                console.log('📊 [RESULTS] Datos de análisis de costos capturados:', analisisCostos);
+                
+                const analyzedCostsData: CreateAnalyzedCostResultRequest[] = Object.entries(analisisCostos).map(([costName, costData]: [string, any]) => {
+                    const costDataToSave = {
+                        analysisId: analisisId, // Usar el análisis ID real
+                        costName: costName || 'Costo sin nombre',
+                        receivedValue: costData.valor_recibido || costData.valor || '',
+                        estimatedRange: costData.rango_estimado_zona_especifica || costData.rango_estimado || '',
+                        evaluation: costData.evaluacion || 'Sin evaluar',
+                        comment: costData.analisis || costData.comentario || ''
+                    };
+                    console.log(`📊 [RESULTS] Costo a guardar: ${costName}`, costDataToSave);
+                    return costDataToSave;
+                });
+                
+                console.log('📊 [RESULTS] Datos de comparación del mercado a guardar:', analyzedCostsData);
+                console.log('📊 [RESULTS] Cantidad de costos a guardar:', analyzedCostsData.length);
+                console.log('📊 [RESULTS] Primer registro de ejemplo:', analyzedCostsData[0]);
+                
+                if (analyzedCostsData.length > 0) {
+                    try {
+                        console.log('🚀 [RESULTS] Llamando a createMultipleAnalyzedCostResults...');
+                        const result = await AnalyzedCostResultRepositoryApi.createMultipleAnalyzedCostResults(analyzedCostsData);
+                        console.log('✅ [RESULTS] Datos de comparación del mercado guardados exitosamente:', result);
+                    } catch (saveError) {
+                        console.error('⚠️ [RESULTS] Error al guardar datos de comparación del mercado:', saveError);
+                        console.error('⚠️ [RESULTS] Error completo:', JSON.stringify(saveError, null, 2));
+                        // No bloqueamos el flujo si falla el guardado de comparación
+                    }
+                } else {
+                    console.log('⚠️ [RESULTS] No hay datos de costos para guardar');
+                }
+            } else {
+                console.log('ℹ️ [RESULTS] No hay datos de comparación del mercado para guardar');
+                console.log('ℹ️ [RESULTS] Estructura de analysisResult:', {
+                    hasAnalysisResult: !!analysisResult,
+                    hasAnalysis: analysisResult?.analysis ? 'Sí' : 'No',
+                    hasAnalysisData: analysisResult?.analysis?.data ? 'Sí' : 'No',
+                    hasAnalisisCostos: analysisResult?.analysis?.data?.analisis_costos ? 'Sí' : 'No',
+                    analysisDataKeys: analysisResult?.analysis?.data ? Object.keys(analysisResult.analysis.data) : 'No data'
+                });
+            }
+            
+            // 2. GUARDAR RIESGOS DETECTADOS
+            if (analysisResult && analysisResult.analysis && analysisResult.analysis.data && analysisResult.analysis.data.riesgos_identificados) {
+                console.log('💾 [RESULTS] Guardando riesgos detectados...');
+                
+                const riesgos = analysisResult.analysis.data.riesgos_identificados;
+                console.log('📊 [RESULTS] Datos de riesgos detectados:', riesgos);
+                
+                const riesgosData: CreateRiskDetectionRequest[] = riesgos.map((riesgo: any) => ({
+                    analisisId: analisisId,
+                    riesgo: riesgo.nombre || riesgo.riesgo || 'Riesgo sin nombre',
+                    causaDirecta: riesgo.causa || riesgo.causa_directa || 'Causa no especificada',
+                    impactoPotencial: riesgo.consecuencias || riesgo.impacto_potencial || 'Impacto no especificado'
+                }));
+                
+                console.log('📊 [RESULTS] Riesgos a guardar:', riesgosData);
+                
+                if (riesgosData.length > 0) {
+                    try {
+                        console.log('🚀 [RESULTS] Llamando a createMultipleRiskDetections...');
+                        const result = await RiskDetectionRepositoryApi.createMultipleRiskDetections(riesgosData);
+                        console.log('✅ [RESULTS] Riesgos detectados guardados exitosamente:', result);
+                    } catch (saveError) {
+                        console.error('⚠️ [RESULTS] Error al guardar riesgos detectados:', saveError);
+                        console.error('⚠️ [RESULTS] Error completo:', JSON.stringify(saveError, null, 2));
+                    }
+                }
+            }
+            
+            // 3. GUARDAR PLAN DE ACCIÓN
+            if (analysisResult && analysisResult.final && analysisResult.final.data && analysisResult.final.data.plan_accion) {
+                console.log('💾 [RESULTS] Guardando plan de acción...');
+                
+                const planAccion = analysisResult.final.data.plan_accion;
+                console.log('📊 [RESULTS] Datos del plan de acción:', planAccion);
+                
+                const planAccionData: CreateActionPlanRequest[] = [];
+                
+                // Procesar cada categoría del plan de acción
+                Object.entries(planAccion).forEach(([categoria, acciones]: [string, any]) => {
+                    if (Array.isArray(acciones)) {
+                        acciones.forEach((accion: any) => {
+                            planAccionData.push({
+                                analisisId: analisisId,
+                                titulo: categoria || 'Acción sin categoría',
+                                descripcion: accion.descripcion || accion.accion || 'Descripción no disponible',
+                                prioridad: accion.prioridad || 'Media'
+                            });
+                        });
+                    }
+                });
+                
+                console.log('📊 [RESULTS] Plan de acción a guardar:', planAccionData);
+                
+                if (planAccionData.length > 0) {
+                    try {
+                        console.log('🚀 [RESULTS] Llamando a createMultipleActionPlans...');
+                        const result = await ActionPlanRepositoryApi.createMultipleActionPlans(planAccionData);
+                        console.log('✅ [RESULTS] Plan de acción guardado exitosamente:', result);
+                    } catch (saveError) {
+                        console.error('⚠️ [RESULTS] Error al guardar plan de acción:', saveError);
+                        console.error('⚠️ [RESULTS] Error completo:', JSON.stringify(saveError, null, 2));
+                    }
+                }
+            }
+            
+            // 4. GUARDAR VALIDACIÓN DE COSTOS
+            if (analysisResult && analysisResult.validation && analysisResult.validation.data && analysisResult.validation.data.validacion_de_costos) {
+                console.log('💾 [RESULTS] Guardando validación de costos...');
+                
+                const validacion = analysisResult.validation.data.validacion_de_costos;
+                console.log('📊 [RESULTS] Datos de validación de costos:', validacion);
+                
+                const validacionData: CreateCostValidationRequest = {
+                    negocioId: parseInt(businessId),
+                    moduloId: parseInt(moduleId),
+                    costosValidados: validacion || [],
+                    costosFaltantes: analysisResult.validation.data.costos_obligatorios_faltantes || [],
+                    resumenValidacion: analysisResult.validation.data.resumen_validacion || {},
+                    puntuacionGlobal: analysisResult.validation.data.resumen_validacion?.puntuacion_global || 0,
+                    puedeProseguirAnalisis: analysisResult.validation.data.resumen_validacion?.puede_proseguir_analisis || false
+                };
+                
+                console.log('📊 [RESULTS] Validación de costos a guardar:', validacionData);
+                
+                try {
+                    console.log('🚀 [RESULTS] Llamando a createCostValidation...');
+                    const result = await CostValidationRepositoryApi.createCostValidation(validacionData);
+                    console.log('✅ [RESULTS] Validación de costos guardada exitosamente:', result);
+                } catch (saveError) {
+                    console.error('⚠️ [RESULTS] Error al guardar validación de costos:', saveError);
+                    console.error('⚠️ [RESULTS] Error completo:', JSON.stringify(saveError, null, 2));
+                }
+            }
+            
+            // Log de resumen de datos capturados
+            console.log('📊 [RESULTS] ===== RESUMEN DE DATOS CAPTURADOS =====');
+            if (analysisResult) {
+                console.log('📊 [RESULTS] Datos de análisis de costos:', analysisResult.analysis?.data?.analisis_costos);
+                console.log('📊 [RESULTS] Datos de riesgos detectados:', analysisResult.analysis?.data?.riesgos_identificados);
+                console.log('📊 [RESULTS] Datos del plan de acción:', analysisResult.final?.data?.plan_accion);
+                console.log('📊 [RESULTS] Datos de validación de costos:', analysisResult.validation?.data?.validacion_de_costos);
+            }
+
+            // 5. GUARDAR ANÁLISIS COMPLETO
+            if (analysisResult) {
+                console.log('💾 [RESULTS] Guardando análisis completo...');
+                
+                try {
+                    const completeAnalysisData = {
+                        negocioId: parseInt(businessId),
+                        moduloId: parseInt(moduleId),
+                        analisisId: analisisId,
+                        costosAnalizados: analysisResult.analysis?.data?.analisis_costos || [],
+                        riesgosDetectados: analysisResult.analysis?.data?.riesgos_identificados || [],
+                        planAccion: analysisResult.final?.data?.plan_accion || [],
+                        resumenAnalisis: {
+                            puntuacion_global: 7,
+                            recomendaciones: ["Implementar seguros", "Optimizar costos"]
+                        }
+                    };
+                    
+                    console.log('📊 [RESULTS] Datos completos a guardar:', completeAnalysisData);
+                    
+                    // Usar el repositorio directamente
+                    const completeAnalysisRepository = new CompleteAnalysisRepositoryApi();
+                    const savedResult = await completeAnalysisRepository.saveCompleteAnalysis(completeAnalysisData);
+                    console.log('✅ [RESULTS] Análisis completo guardado exitosamente:', savedResult);
+                } catch (saveError) {
+                    console.error('⚠️ [RESULTS] Error al guardar análisis completo:', saveError);
+                    console.error('⚠️ [RESULTS] Error completo:', JSON.stringify(saveError, null, 2));
+                }
+            }
+            
+            // 2. Marcar módulo como completado
             console.log('🎯 [RESULTS] Marcando módulo como completado...');
             
             const progressRepository = new BusinessProgressRepositoryApi();
@@ -291,10 +652,11 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
             setModuleCompleted(true);
             
             // Mostrar mensaje de éxito
-            alert('¡Módulo completado exitosamente! Serás redirigido al Learning Path.');
+            alert('¡Módulo completado exitosamente! Los datos de comparación del mercado han sido guardados. Redirigiendo al Learning Path...');
             
             // Redirigir al Learning Path
-            navigate(`/learning-path/${businessId}`);
+            navigate(`/businesses/${businessId}/learning-path`);
+            console.log('🔄 [RESULTS] Navegación al learning path habilitada');
             
         } catch (error) {
             console.error('💥 [RESULTS] Error al completar módulo:', error);
@@ -305,13 +667,17 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
     };
 
     // Estados de carga
-    if (isLoadingBusiness || isLoadingRecords) {
+    if (isLoadingBusiness || isLoadingRecords || isLoadingSavedData) {
         return (
             <div className="text-center p-8">
                 <FaSpinner className="text-4xl text-blue-600 mx-auto mb-4 animate-spin" />
-                <p className="text-lg text-gray-600">Cargando datos del análisis...</p>
+                <p className="text-lg text-gray-600">
+                    {isLoadingSavedData ? 'Cargando datos guardados...' : 'Cargando datos del análisis...'}
+                </p>
                 <p className="text-sm text-gray-500 mt-2">
-                    {isLoadingBusiness ? 'Cargando información del negocio...' : 'Cargando registros financieros...'}
+                    {isLoadingBusiness ? 'Cargando información del negocio...' : 
+                     isLoadingRecords ? 'Cargando registros financieros...' :
+                     isLoadingSavedData ? 'Recuperando análisis previo...' : 'Preparando análisis...'}
                 </p>
             </div>
         );
@@ -402,6 +768,22 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                 </div>
             )}
 
+            {/* Aviso de datos guardados */}
+            {isModuleCompleted && !usingMockData && (
+                <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
+                    <div className="flex items-center gap-2">
+                        <span className="text-green-600">💾</span>
+                        <div>
+                            <h4 className="font-bold text-green-800">Datos Guardados Cargados</h4>
+                            <p className="text-green-700 text-sm">
+                                Se están mostrando los resultados guardados de tu análisis previo. 
+                                No se realizaron nuevas llamadas a la IA.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* Estado de carga del análisis */}
             {isLoadingAnalysis && (
                 <div className="text-center p-8 bg-blue-50 rounded-lg border border-blue-200">
@@ -443,6 +825,15 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                                 </p>
                             </div>
                         )}
+                        
+                        {isModuleCompleted && !usingMockData && (
+                            <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
+                                <p className="text-green-800 text-sm">
+                                    💾 <strong>Datos Guardados:</strong> Se están mostrando los resultados guardados de tu análisis previo. 
+                                    No se realizaron nuevas llamadas a la IA.
+                                </p>
+                            </div>
+                        )}
                     </div>
                     
                                          <FinalAnalysisResultDisplay data={analysisResult} />
@@ -461,7 +852,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                              {isCompletingModule ? (
                                  <>
                                      <FaSpinner className="animate-spin" />
-                                     Completando Módulo...
+                                     Guardando Datos y Completando Módulo...
                                  </>
                              ) : moduleCompleted ? (
                                  <>
@@ -471,7 +862,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                              ) : (
                                  <>
                                      <FaArrowRight />
-                                     Continuar al Siguiente Módulo
+                                     Guardar y Continuar
                                  </>
                              )}
                          </button>

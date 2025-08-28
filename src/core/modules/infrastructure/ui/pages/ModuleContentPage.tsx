@@ -81,10 +81,7 @@ export function ModuleContentPage() {
         const getModuleContentUseCase = new GetModuleContent(moduleRepository);
         const moduleIdNumber = parseInt(moduleId, 10);
         
-        console.log(`📚 [FRONTEND] Cargando contenido del módulo ${moduleIdNumber}...`);
         const fetchedContent = await getModuleContentUseCase.execute(moduleIdNumber);
-        
-        console.log(`✅ [FRONTEND] Contenido del módulo cargado:`, fetchedContent);
         setModuleContent(fetchedContent);
         
         // Marcar el video como completado automáticamente cuando se carga el contenido
@@ -143,7 +140,9 @@ export function ModuleContentPage() {
       setCurrentSection('results');
       setProgress(prev => ({ ...prev, resultsViewed: true }));
     } else if (currentSection === 'results' && progress.resultsViewed) {
+      // Navegación al learning path
       navigate(`/businesses/${businessId}/learning-path`);
+      console.log('🔄 [MODULE] Navegación al learning path habilitada');
     }
   };
 

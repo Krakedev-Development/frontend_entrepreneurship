@@ -432,6 +432,8 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
               
               // Almacenar los resultados del análisis comparativo de mercado en el estado (no guardar aún)
               if (result.analysis?.data?.analisis_costos) {
+                console.log('📊 [SIMULATION] Datos de análisis disponibles:', result.analysis.data.analisis_costos);
+                
                 const analyzedCostsData = Object.entries(result.analysis.data.analisis_costos).map(([costName, costData]: [string, any]) => ({
                   analysisId: parseInt(businessId), // Usar businessId como analysisId temporal
                   costName: costName,
@@ -441,7 +443,11 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
                   comment: costData.analisis || ''
                 }));
                 
+                console.log('💾 [SIMULATION] Datos preparados para guardar:', analyzedCostsData);
                 setAnalyzedCostsToSave(analyzedCostsData);
+              } else {
+                console.log('⚠️ [SIMULATION] No hay datos de análisis disponibles en el resultado');
+                setAnalyzedCostsToSave(null);
               }
               
               // Los registros financieros se guardarán cuando se presione "Continuar al Análisis"
@@ -473,19 +479,32 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
     setIsLoading(true); // Mostrar estado de carga
     
     try {
+      console.log('🔄 [SIMULATION] Iniciando proceso de guardar y continuar...');
+      console.log('📊 [SIMULATION] analyzedCostsToSave:', analyzedCostsToSave);
+      
       // Guardar los registros financieros cuando se presione "Continuar al Análisis"
       await saveRecordsOnValidationSuccess(records);
       
       // Guardar los resultados de análisis comparativo de mercado si están disponibles
       if (analyzedCostsToSave && analyzedCostsToSave.length > 0) {
-        await AnalyzedCostResultRepositoryApi.createMultipleAnalyzedCostResults(analyzedCostsToSave);
+        console.log('💾 [SIMULATION] Guardando resultados de análisis:', analyzedCostsToSave.length, 'elementos');
+        try {
+          await AnalyzedCostResultRepositoryApi.createMultipleAnalyzedCostResults(analyzedCostsToSave);
+          console.log('✅ [SIMULATION] Resultados de análisis guardados exitosamente');
+        } catch (saveError) {
+          console.error('⚠️ [SIMULATION] Error al guardar resultados de análisis:', saveError);
+          // No bloqueamos el flujo si falla el guardado de análisis
+        }
         setAnalyzedCostsToSave(null); // Limpiar el estado después de guardar
+      } else {
+        console.log('⚠️ [SIMULATION] No hay datos de análisis para guardar - continuando sin análisis');
       }
       
       // Cerrar modal y proceder a la vista de resultados
       setIsModalOpen(false);
       setSimulationCompleted(true);
     } catch (error) {
+      console.error('💥 [SIMULATION] Error al guardar datos:', error);
       setError('Error al guardar los datos. Por favor, inténtalo de nuevo.');
     } finally {
       setIsLoading(false); // Ocultar estado de carga

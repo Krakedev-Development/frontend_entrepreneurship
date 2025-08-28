@@ -9,7 +9,6 @@ export class GetModuleContent {
 
   async execute(id: number): Promise<ModuleContent> {
     const moduleContent = await this.moduleRepository.getModuleContentById(id);
-    console.log(`Núcleo: Se encontro ${moduleContent}`);
     return moduleContent;
   }
 }

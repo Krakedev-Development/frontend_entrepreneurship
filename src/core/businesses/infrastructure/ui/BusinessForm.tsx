@@ -81,7 +81,7 @@ export function BusinessForm() {
     name: "",
     businessType: "",
     location: "",
-    sizeId: 1,
+    sizeId: 0, // Cambiar a 0 para que no haya un valor por defecto
     icon: iconOptions[0].value,
     color: colorOptions[0].value,
   });
@@ -98,6 +98,12 @@ export function BusinessForm() {
         const getSizesUseCase = new GetSizes(sizeRepository);
         const sizesData = await getSizesUseCase.execute();
         setSizes(sizesData);
+        
+        // Establecer automáticamente el primer tamaño disponible si no hay uno seleccionado
+        if (sizesData.length > 0 && (!formData.sizeId || formData.sizeId === 0)) {
+          console.log("🔄 [FRONTEND] Estableciendo primer tamaño automáticamente:", sizesData[0]);
+          setFormData(prev => ({ ...prev, sizeId: sizesData[0].sizeId }));
+        }
       } catch (error) {
         console.error('Error al cargar tamaños:', error);
         setError('No se pudieron cargar los tamaños de negocio');
@@ -145,6 +151,19 @@ export function BusinessForm() {
       }
       if (!formData.sizeId || formData.sizeId <= 0) {
         throw new Error("Debes seleccionar un tamaño de negocio");
+      }
+      
+      // Verificar que el tamaño seleccionado existe en la lista de tamaños disponibles
+      console.log("🔍 [FRONTEND] Validando tamaño seleccionado:");
+      console.log("  - formData.sizeId:", formData.sizeId, "tipo:", typeof formData.sizeId);
+      console.log("  - sizes disponibles:", sizes);
+      console.log("  - sizeId convertido:", Number(formData.sizeId));
+      
+      const selectedSizeExists = sizes.some(size => size.sizeId === Number(formData.sizeId));
+      console.log("  - ¿Existe el tamaño?:", selectedSizeExists);
+      
+      if (!selectedSizeExists) {
+        throw new Error("El tamaño de negocio seleccionado no es válido");
       }
 
       const businessRepository = new BusinessRepositoryApi();
@@ -281,21 +300,24 @@ export function BusinessForm() {
               <select
                 id="sizeId"
                 name="sizeId"
-                value={formData.sizeId}
+                value={formData.sizeId || ""}
                 onChange={handleInputChange}
                 className="w-full px-4 py-3 border border-neutral-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent transition-all duration-200 text-lg bg-white"
                 required
                 disabled={sizesLoading}
               >
                 {sizesLoading ? (
-                  <option>Cargando tamaños...</option>
-                                 ) : (
-                   sizes.map((size) => (
-                     <option key={size.sizeId} value={size.sizeId}>
-                       {size.sizeName}
-                     </option>
-                   ))
-                 )}
+                  <option value="">Cargando tamaños...</option>
+                ) : (
+                  <>
+                    <option value="">Selecciona un tamaño de negocio</option>
+                    {sizes.map((size) => (
+                      <option key={size.sizeId} value={size.sizeId}>
+                        {size.sizeName}
+                      </option>
+                    ))}
+                  </>
+                )}
               </select>
             </div>
 
