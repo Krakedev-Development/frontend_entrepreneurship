@@ -1,6 +1,6 @@
 import React from 'react';
 import { useCompleteAnalysis } from '../../hooks/useCompleteAnalysis';
-import { SaveCompleteAnalysisRequest } from '../../adapters/CompleteAnalysisRepositoryApi';
+import { type SaveCompleteAnalysisRequest } from '../../adapters/CompleteAnalysisRepositoryApi';
 
 interface SaveAndContinueButtonProps {
   negocioId: number;

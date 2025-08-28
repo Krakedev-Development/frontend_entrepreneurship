@@ -48,6 +48,11 @@ export class AiAnalysisService {
       const response = await apiClient.post<ValidationResult>('/ai/validate-costs', requestBody);
       
       console.log('✅ [FRONTEND-AI] Validación completada:', response);
+      console.log('📊 [FRONTEND-AI] Estructura de respuesta:', JSON.stringify(response, null, 2));
+      console.log('📊 [FRONTEND-AI] response.data:', response.data);
+      console.log('📊 [FRONTEND-AI] response.data.validacion_de_costos:', response.data?.validacion_de_costos);
+      console.log('📊 [FRONTEND-AI] response.data.costos_obligatorios_faltantes:', response.data?.costos_obligatorios_faltantes);
+      console.log('📊 [FRONTEND-AI] response.data.resumen_validacion:', response.data?.resumen_validacion);
       return response;
     } catch (error) {
       console.error('💥 [FRONTEND-AI] Error en validación:', error);

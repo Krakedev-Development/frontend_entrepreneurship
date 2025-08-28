@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { CompleteAnalysisRepositoryApi, CompleteAnalysisResult, SaveCompleteAnalysisRequest } from '../adapters/CompleteAnalysisRepositoryApi';
+import { CompleteAnalysisRepositoryApi, type CompleteAnalysisResult, type SaveCompleteAnalysisRequest } from '../adapters/CompleteAnalysisRepositoryApi';
 import { SaveCompleteAnalysisResults } from '../../application/useCase/SaveCompleteAnalysisResults';
 import { GetCompleteAnalysisResults } from '../../application/useCase/GetCompleteAnalysisResults';
 

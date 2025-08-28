@@ -1,7 +1,11 @@
-import { CompleteAnalysisRepositoryApi, CompleteAnalysisResult } from '../../infrastructure/adapters/CompleteAnalysisRepositoryApi';
+import { CompleteAnalysisRepositoryApi, type CompleteAnalysisResult } from '../../infrastructure/adapters/CompleteAnalysisRepositoryApi';
 
 export class GetCompleteAnalysisResults {
-  constructor(private readonly repository: CompleteAnalysisRepositoryApi) {}
+  private readonly repository: CompleteAnalysisRepositoryApi;
+
+  constructor(repository: CompleteAnalysisRepositoryApi) {
+    this.repository = repository;
+  }
 
   async execute(negocioId: number, moduloId: number): Promise<CompleteAnalysisResult | null> {
     console.log(`🔍 [FRONTEND-USE-CASE] Obteniendo análisis completo para negocio ${negocioId} y módulo ${moduloId}`);

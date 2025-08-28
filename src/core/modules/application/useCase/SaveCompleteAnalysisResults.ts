@@ -1,7 +1,11 @@
-import { CompleteAnalysisRepositoryApi, CompleteAnalysisResult, SaveCompleteAnalysisRequest } from '../../infrastructure/adapters/CompleteAnalysisRepositoryApi';
+import { CompleteAnalysisRepositoryApi, type CompleteAnalysisResult, type SaveCompleteAnalysisRequest } from '../../infrastructure/adapters/CompleteAnalysisRepositoryApi';
 
 export class SaveCompleteAnalysisResults {
-  constructor(private readonly repository: CompleteAnalysisRepositoryApi) {}
+  private readonly repository: CompleteAnalysisRepositoryApi;
+
+  constructor(repository: CompleteAnalysisRepositoryApi) {
+    this.repository = repository;
+  }
 
   async execute(data: SaveCompleteAnalysisRequest): Promise<CompleteAnalysisResult> {
     console.log('💾 [FRONTEND-USE-CASE] Ejecutando guardado de análisis completo');

@@ -9,7 +9,6 @@ import { AnalyzedCostResultRepositoryApi, type CreateAnalyzedCostResultRequest }
 import { RiskDetectionRepositoryApi, type CreateRiskDetectionRequest } from "../../adapters/RiskDetectionRepositoryApi";
 import { ActionPlanRepositoryApi, type CreateActionPlanRequest } from "../../adapters/ActionPlanRepositoryApi";
 import { CostValidationRepositoryApi, type CreateCostValidationRequest } from "../../adapters/CostValidationRepositoryApi";
-import { useCompleteAnalysis } from "../../hooks/useCompleteAnalysis";
 import { CompleteAnalysisRepositoryApi } from "../../adapters/CompleteAnalysisRepositoryApi";
 
 interface ResultsSectionProps {
@@ -60,14 +59,13 @@ const useModuleCompletionStatus = (businessId: string | undefined, moduleId: str
 };
 
 // Hook personalizado para cargar datos guardados del análisis completo
-const useSavedAnalysisData = (businessId: string | undefined, moduleId: string | undefined, isModuleCompleted: boolean) => {
+const useSavedAnalysisData = (businessId: string | undefined, moduleId: string | undefined) => {
     const [savedAnalysisData, setSavedAnalysisData] = useState<any>(null);
     const [isLoadingSavedData, setIsLoadingSavedData] = useState(false);
     const [savedDataError, setSavedDataError] = useState<string | null>(null);
-    const { getCompleteAnalysis } = useCompleteAnalysis();
 
     useEffect(() => {
-        if (!businessId || !moduleId || !isModuleCompleted) {
+        if (!businessId || !moduleId) {
             return;
         }
 
@@ -77,15 +75,76 @@ const useSavedAnalysisData = (businessId: string | undefined, moduleId: string |
                 setSavedDataError(null);
                 
                 console.log('🔍 [RESULTS] Cargando datos guardados del análisis completo...');
-                const savedData = await getCompleteAnalysis(parseInt(businessId), parseInt(moduleId));
+                console.log('📊 [RESULTS] businessId:', businessId, 'moduleId:', moduleId);
                 
-                if (savedData) {
-                    console.log('✅ [RESULTS] Datos guardados cargados exitosamente:', savedData);
-                    setSavedAnalysisData(savedData);
+                // 1. Intentar cargar análisis completo
+                try {
+                    const completeAnalysisRepository = new CompleteAnalysisRepositoryApi();
+                    const savedData = await completeAnalysisRepository.getCompleteAnalysis(
+                        parseInt(businessId),
+                        parseInt(moduleId)
+                    );
+                    
+                    if (savedData) {
+                        console.log('✅ [RESULTS] Análisis completo encontrado:', savedData);
+                        setSavedAnalysisData(savedData);
+                        return;
+                    }
+                } catch (completeError) {
+                    console.log('⚠️ [RESULTS] No se encontró análisis completo:', completeError);
+                }
+                
+                // 2. Si no hay análisis completo, intentar con el endpoint alternativo
+                try {
+                    const completeAnalysisRepository = new CompleteAnalysisRepositoryApi();
+                    const savedData = await completeAnalysisRepository.getCompleteAnalysisAlternative(
+                        parseInt(businessId),
+                        parseInt(moduleId)
+                    );
+                    
+                    if (savedData) {
+                        console.log('✅ [RESULTS] Análisis completo encontrado (alternativo):', savedData);
+                        setSavedAnalysisData(savedData);
+                        return;
+                    }
+                } catch (completeError) {
+                    console.log('⚠️ [RESULTS] No se encontró análisis completo (alternativo):', completeError);
+                }
+                
+                // 3. Si no hay análisis completo, cargar datos individuales
+                console.log('🔍 [RESULTS] Cargando datos individuales del análisis...');
+                
+                const analysisData: any = {
+                    costosAnalizados: [],
+                    riesgosDetectados: [],
+                    planAccion: [],
+                    validacionCostos: null
+                };
+                
+                // Cargar análisis de costos (usando el análisis ID del negocio)
+                try {
+                    const analyzedCosts = await AnalyzedCostResultRepositoryApi.getAnalyzedCostResultsByAnalysisId(
+                        parseInt(businessId)
+                    );
+                    if (analyzedCosts && analyzedCosts.length > 0) {
+                        console.log('✅ [RESULTS] Costos analizados cargados:', analyzedCosts.length, 'elementos');
+                        analysisData.costosAnalizados = analyzedCosts;
+                    }
+                } catch (costsError) {
+                    console.log('⚠️ [RESULTS] No se encontraron costos analizados:', costsError);
+                }
+                
+                // Verificar si se encontraron datos
+                const hasData = analysisData.costosAnalizados.length > 0;
+                
+                if (hasData) {
+                    console.log('✅ [RESULTS] Datos guardados cargados exitosamente:', analysisData);
+                    setSavedAnalysisData(analysisData);
                 } else {
                     console.log('⚠️ [RESULTS] No se encontraron datos guardados');
                     setSavedDataError('No se encontraron datos guardados para este módulo');
                 }
+                
             } catch (error) {
                 console.error('❌ [RESULTS] Error al cargar datos guardados:', error);
                 setSavedDataError(error instanceof Error ? error.message : 'Error al cargar datos guardados');
@@ -95,7 +154,7 @@ const useSavedAnalysisData = (businessId: string | undefined, moduleId: string |
         };
 
         loadSavedData();
-    }, [businessId, moduleId, isModuleCompleted, getCompleteAnalysis]);
+    }, [businessId, moduleId]);
 
     return { savedAnalysisData, isLoadingSavedData, savedDataError };
 };
@@ -277,7 +336,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
     const { businessInfo, isLoading: isLoadingBusiness } = useBusinessInfo(businessId);
     const { records, isLoading: isLoadingRecords } = useFinancialRecords(businessId, moduleId);
     const { isModuleCompleted } = useModuleCompletionStatus(businessId, moduleId);
-    const { savedAnalysisData, isLoadingSavedData } = useSavedAnalysisData(businessId, moduleId, isModuleCompleted);
+    const { savedAnalysisData, isLoadingSavedData } = useSavedAnalysisData(businessId, moduleId);
     
     const [analysisResult, setAnalysisResult] = useState<any>(null);
     const [isLoadingAnalysis, setIsLoadingAnalysis] = useState(false);
@@ -294,17 +353,17 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
         }
     }, [isModuleCompleted]);
 
-    // Ejecutar análisis cuando se carguen los datos (solo si el módulo no está completado)
+    // Ejecutar análisis cuando se carguen los datos (solo si no hay datos guardados)
     useEffect(() => {
         console.log('🔍 [RESULTS] useEffect de análisis - Condiciones:');
         console.log('📊 [RESULTS] businessInfo:', !!businessInfo);
         console.log('📊 [RESULTS] records.length:', records.length);
         console.log('📊 [RESULTS] !hasExecutedAnalysis:', !hasExecutedAnalysis);
         console.log('📊 [RESULTS] !isLoadingAnalysis:', !isLoadingAnalysis);
-        console.log('📊 [RESULTS] !isModuleCompleted:', !isModuleCompleted);
-        console.log('📊 [RESULTS] isModuleCompleted valor:', isModuleCompleted);
+        console.log('📊 [RESULTS] !savedAnalysisData:', !savedAnalysisData);
+        console.log('📊 [RESULTS] !isLoadingSavedData:', !isLoadingSavedData);
         
-        if (businessInfo && records.length > 0 && !hasExecutedAnalysis && !isLoadingAnalysis && !isModuleCompleted) {
+        if (businessInfo && records.length > 0 && !hasExecutedAnalysis && !isLoadingAnalysis && !savedAnalysisData && !isLoadingSavedData) {
             const executeAnalysis = async () => {
                 try {
                     setIsLoadingAnalysis(true);
@@ -360,10 +419,10 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
         }
     }, [businessInfo, records, hasExecutedAnalysis, isModuleCompleted]); // Agregada isModuleCompleted para control
 
-    // Usar datos guardados cuando el módulo está completado
+    // Usar datos guardados cuando estén disponibles
     useEffect(() => {
-        if (isModuleCompleted && savedAnalysisData && !analysisResult) {
-            console.log('🔄 [RESULTS] Usando datos guardados del módulo completado');
+        if (savedAnalysisData && !analysisResult && !isLoadingSavedData) {
+            console.log('🔄 [RESULTS] Usando datos guardados del análisis');
             console.log('📊 [RESULTS] Datos guardados recibidos:', savedAnalysisData);
             
             // Convertir los datos guardados al formato esperado por el componente
@@ -377,12 +436,13 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                     },
                     final: {
                         data: {
-                            plan_accion: savedAnalysisData.planAccion || []
+                            plan_accion: []
                         }
                     },
                     validation: {
                         data: {
-                            validacion_de_costos: savedAnalysisData.riesgosDetectados || []
+                            validacion_de_costos: [],
+                            costos_obligatorios_faltantes: []
                         }
                     }
                 }
@@ -395,7 +455,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
             setHasExecutedAnalysis(true);
             console.log('✅ [RESULTS] Datos guardados cargados exitosamente');
         }
-    }, [isModuleCompleted, savedAnalysisData, analysisResult]);
+    }, [savedAnalysisData, analysisResult, isLoadingSavedData]);
 
     // Debug logs - Solo cuando cambien los valores importantes
     useEffect(() => {
@@ -769,7 +829,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
             )}
 
             {/* Aviso de datos guardados */}
-            {isModuleCompleted && !usingMockData && (
+            {savedAnalysisData && !usingMockData && (
                 <div className="bg-green-50 border border-green-200 p-4 rounded-lg mb-6">
                     <div className="flex items-center gap-2">
                         <span className="text-green-600">💾</span>
@@ -826,7 +886,7 @@ export function ResultsSection({ moduleContent: _moduleContent }: ResultsSection
                             </div>
                         )}
                         
-                        {isModuleCompleted && !usingMockData && (
+                        {savedAnalysisData && !usingMockData && (
                             <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
                                 <p className="text-green-800 text-sm">
                                     💾 <strong>Datos Guardados:</strong> Se están mostrando los resultados guardados de tu análisis previo. 

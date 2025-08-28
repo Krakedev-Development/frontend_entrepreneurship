@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useCompleteAnalysis } from '../../hooks/useCompleteAnalysis';
-import { CompleteAnalysisResult } from '../../adapters/CompleteAnalysisRepositoryApi';
+import { type CompleteAnalysisResult } from '../../adapters/CompleteAnalysisRepositoryApi';
 
 interface LoadSavedResultsProps {
   negocioId: number;

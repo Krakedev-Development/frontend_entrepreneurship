@@ -30,6 +30,8 @@ export class ValidationResultRepositoryApi {
    */
   static async saveValidationResult(data: SaveValidationResultRequest): Promise<ValidationResultResponse> {
     console.log('💾 [FRONTEND-VALIDATION] Guardando resultado de validación:', data);
+    console.log('💾 [FRONTEND-VALIDATION] URL de la petición:', this.BASE_URL);
+    console.log('💾 [FRONTEND-VALIDATION] Datos enviados:', JSON.stringify(data, null, 2));
 
     try {
       const response = await apiClient.post<{
@@ -39,10 +41,37 @@ export class ValidationResultRepositoryApi {
       }>(this.BASE_URL, data);
 
       console.log('✅ [FRONTEND-VALIDATION] Resultado guardado exitosamente:', response);
+      console.log('✅ [FRONTEND-VALIDATION] Respuesta completa:', JSON.stringify(response, null, 2));
+      
+      // Verificar si los datos se guardaron correctamente
+      if (response.data) {
+        console.log('🔍 [FRONTEND-VALIDATION] Verificando datos guardados...');
+        console.log('🔍 [FRONTEND-VALIDATION] costosValidados guardados:', response.data.costosValidados);
+        console.log('🔍 [FRONTEND-VALIDATION] costosFaltantes guardados:', response.data.costosFaltantes);
+        
+        // Verificar si los arrays están vacíos (problema del backend)
+        if (response.data.costosValidados && response.data.costosValidados.length > 0) {
+          const hasEmptyArrays = response.data.costosValidados.some((item: any) => Array.isArray(item) && item.length === 0);
+          if (hasEmptyArrays) {
+            console.error('❌ [FRONTEND-VALIDATION] PROBLEMA DETECTADO: El backend está guardando arrays vacíos en lugar de los datos reales');
+            console.error('❌ [FRONTEND-VALIDATION] Datos enviados vs Datos guardados:');
+            console.error('❌ [FRONTEND-VALIDATION] Enviados:', data.costosValidados);
+            console.error('❌ [FRONTEND-VALIDATION] Guardados:', response.data.costosValidados);
+          }
+        }
+      }
+      
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [FRONTEND-VALIDATION] Error al guardar resultado:', error);
-      throw new Error('Error al guardar el resultado de validación');
+      console.error('❌ [FRONTEND-VALIDATION] Detalles del error:', {
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        response: error.response,
+        data: error.response?.data
+      });
+      throw new Error(`Error al guardar el resultado de validación: ${error.message}`);
     }
   }
 

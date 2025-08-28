@@ -406,35 +406,54 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
         ubicacion: businessInfo.ubicacion
       };
 
-      // Usar el nuevo servicio optimizado
-      const result = await aiAnalysisService.completeAnalysis(costs, businessInfoForAnalysis);
+      // Ejecutar solo la validación
+      console.log('📊 [SIMULATION] Ejecutando validación...');
+      const result = await aiAnalysisService.validateCosts(costs, businessInfoForAnalysis);
       
-      if (result.success && 'validation' in result) {
-        
-        // Usar el resultado de validación para el modal
-        if (result.validation?.data) {
-          setValidationResult(result.validation.data);
+             if (result.success) {
+         console.log('✅ [DEBUG-VALIDATION] Validación exitosa, procesando resultado...');
+         console.log('📊 [DEBUG-VALIDATION] Resultado completo de IA:', JSON.stringify(result.data, null, 2));
+         
+         // Usar el resultado de validación para el modal
+         if (result.data) {
+           console.log('📊 [DEBUG-VALIDATION] Datos de validación disponibles:', result.data);
+           console.log('📊 [DEBUG-VALIDATION] validacion_de_costos:', result.data.validacion_de_costos);
+           console.log('📊 [DEBUG-VALIDATION] costos_obligatorios_faltantes:', result.data.costos_obligatorios_faltantes);
+           console.log('📊 [DEBUG-VALIDATION] resumen_validacion:', result.data.resumen_validacion);
+           setValidationResult(result.data);
           
           // Guardar el resultado de validación en la base de datos
           try {
             if (businessId && moduleId) {
+              // Construir el objeto de validación con los datos correctos
+              console.log('🔧 [DEBUG-VALIDATION] Construyendo objeto validationData...');
+              
               const validationData = {
                 negocioId: parseInt(businessId),
                 moduloId: parseInt(moduleId),
-                costosValidados: result.validation.data.validacion_de_costos || [],
-                costosFaltantes: result.validation.data.costos_obligatorios_faltantes || [],
-                resumenValidacion: result.validation.data.resumen_validacion || {},
-                puntuacionGlobal: parseInt(result.validation.data.resumen_validacion?.puntuacion_global) || 0,
-                puedeProseguirAnalisis: result.validation.data.resumen_validacion?.puede_proseguir_analisis || false
+                costosValidados: result.data.validacion_de_costos || [],
+                costosFaltantes: result.data.costos_obligatorios_faltantes || [],
+                resumenValidacion: {
+                  puntuacion_global: result.data.resumen_validacion?.puntuacion_global || 0,
+                  puede_proseguir_analisis: result.data.resumen_validacion?.puede_proseguir_analisis || false,
+                  // Agregar más campos del resumen si existen
+                  ...result.data.resumen_validacion
+                },
+                puntuacionGlobal: parseInt(result.data.resumen_validacion?.puntuacion_global) || 0,
+                puedeProseguirAnalisis: result.data.resumen_validacion?.puede_proseguir_analisis || false
               };
+              
+              console.log('🔧 [DEBUG-VALIDATION] Objeto validationData construido:', JSON.stringify(validationData, null, 2));
+              console.log('🔧 [DEBUG-VALIDATION] costosValidados length:', validationData.costosValidados?.length);
+              console.log('🔧 [DEBUG-VALIDATION] costosFaltantes length:', validationData.costosFaltantes?.length);
               
               await ValidationResultRepositoryApi.saveValidationResult(validationData);
               
               // Almacenar los resultados del análisis comparativo de mercado en el estado (no guardar aún)
-              if (result.analysis?.data?.analisis_costos) {
-                console.log('📊 [SIMULATION] Datos de análisis disponibles:', result.analysis.data.analisis_costos);
+              if (result.data?.analisis_costos) {
+                console.log('📊 [SIMULATION] Datos de análisis disponibles:', result.data.analisis_costos);
                 
-                const analyzedCostsData = Object.entries(result.analysis.data.analisis_costos).map(([costName, costData]: [string, any]) => ({
+                const analyzedCostsData = Object.entries(result.data.analisis_costos).map(([costName, costData]: [string, any]) => ({
                   analysisId: parseInt(businessId), // Usar businessId como analysisId temporal
                   costName: costName,
                   receivedValue: costData.valor_recibido || '',
@@ -453,7 +472,7 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
               // Los registros financieros se guardarán cuando se presione "Continuar al Análisis"
             }
           } catch (saveError) {
-            // No bloqueamos el flujo si falla el guardado
+            console.error('⚠️ [SIMULATION] Error al guardar resultados de análisis:', saveError);
           }
         }
         
@@ -586,20 +605,34 @@ export function SimulationSection({ moduleContent, onSimulationComplete, onExist
           onRemoveRecord={removeRecord}
           onUpdateRecord={updateRecord}
         />
-        <div className="border-t border-neutral-200 mt-6 text-right">
-          <button
-            onClick={handleExecuteValidation}
-            disabled={isLoadingBusiness || !businessInfo || isLoadingRecords}
-            className={`font-bold py-3 px-6 rounded-brand shadow-lg transition-colors ${
-              isLoadingBusiness || !businessInfo || isLoadingRecords
-                ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
-                : hasExistingValidation 
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                  : 'bg-green-600 hover:bg-green-700 text-white'
-            }`}
-          >
-            {isLoadingBusiness || isLoadingRecords ? 'Cargando...' : hasExistingValidation ? 'Re-ejecutar Análisis' : 'Ejecutar Análisis'}
-          </button>
+                 <div className="border-t border-neutral-200 mt-6 text-right">
+           <button
+             onClick={handleExecuteValidation}
+             disabled={isLoadingBusiness || !businessInfo || isLoadingRecords}
+             className={`font-bold py-3 px-6 rounded-brand shadow-lg transition-colors ${
+               isLoadingBusiness || !businessInfo || isLoadingRecords
+                 ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                 : hasExistingValidation 
+                   ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                   : 'bg-green-600 hover:bg-green-700 text-white'
+             }`}
+           >
+             {isLoadingBusiness || isLoadingRecords ? 'Cargando...' : hasExistingValidation ? 'Re-ejecutar Análisis' : 'Ejecutar Análisis'}
+           </button>
+           
+           {/* Botón de prueba para debug */}
+           <button
+             onClick={() => {
+               console.log('🧪 [DEBUG-TEST] Datos actuales:');
+               console.log('🧪 [DEBUG-TEST] records:', records);
+               console.log('🧪 [DEBUG-TEST] businessInfo:', businessInfo);
+               console.log('🧪 [DEBUG-TEST] validationResult:', validationResult);
+               console.log('🧪 [DEBUG-TEST] analyzedCostsToSave:', analyzedCostsToSave);
+             }}
+             className="ml-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-brand shadow-lg transition-colors"
+           >
+             🧪 Debug Test
+           </button>
           {businessError && (
             <p className="text-red-500 text-sm mt-2 text-right">
               Error al cargar información del negocio

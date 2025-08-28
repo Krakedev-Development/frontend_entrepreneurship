@@ -30,6 +30,8 @@ export class FinancialRecordRepositoryApi {
   // Crear un nuevo registro financiero
   static async createRecord(data: CreateFinancialRecordRequest): Promise<FinancialRecord> {
     console.log('💾 [FRONTEND-FINANCIAL] Creando registro financiero:', data);
+    console.log('💾 [FRONTEND-FINANCIAL] URL de la petición:', this.BASE_URL);
+    console.log('💾 [FRONTEND-FINANCIAL] Datos enviados:', JSON.stringify(data, null, 2));
 
     try {
       const response = await apiClient.post<{
@@ -39,10 +41,18 @@ export class FinancialRecordRepositoryApi {
       }>(this.BASE_URL, data);
 
       console.log('✅ [FRONTEND-FINANCIAL] Registro creado exitosamente:', response);
+      console.log('✅ [FRONTEND-FINANCIAL] Respuesta completa:', JSON.stringify(response, null, 2));
       return response.data;
-    } catch (error) {
+    } catch (error: any) {
       console.error('❌ [FRONTEND-FINANCIAL] Error al crear registro:', error);
-      throw new Error('Error al crear el registro financiero');
+      console.error('❌ [FRONTEND-FINANCIAL] Detalles del error:', {
+        message: error.message,
+        status: error.status,
+        statusText: error.statusText,
+        response: error.response,
+        data: error.response?.data
+      });
+      throw new Error(`Error al crear el registro financiero: ${error.message}`);
     }
   }
 
@@ -81,11 +91,14 @@ export class FinancialRecordRepositoryApi {
   // Guardar múltiples registros (siempre crear nuevos)
   static async saveRecords(records: FinancialRecord[]): Promise<FinancialRecord[]> {
     console.log('💾 [FRONTEND-FINANCIAL] Guardando múltiples registros:', records.length);
+    console.log('💾 [FRONTEND-FINANCIAL] URL base:', this.BASE_URL);
+    console.log('💾 [FRONTEND-FINANCIAL] Registros a guardar:', JSON.stringify(records, null, 2));
 
     const savedRecords: FinancialRecord[] = [];
 
     for (const record of records) {
       try {
+        console.log(`💾 [FRONTEND-FINANCIAL] Procesando registro: ${record.name} - $${record.amount}`);
         // Siempre crear nuevo registro (no actualizar)
         const newRecord = await this.createRecord({
           businessId: record.businessId,
@@ -95,13 +108,22 @@ export class FinancialRecordRepositoryApi {
         });
         savedRecords.push(newRecord);
         console.log(`✅ [FRONTEND-FINANCIAL] Registro creado: ${record.name} - $${record.amount}`);
-      } catch (error) {
-        console.error('❌ [FRONTEND-FINANCIAL] Error al guardar registro:', record, error);
+        console.log(`✅ [FRONTEND-FINANCIAL] Registro guardado completo:`, JSON.stringify(newRecord, null, 2));
+      } catch (error: any) {
+        console.error('❌ [FRONTEND-FINANCIAL] Error al guardar registro:', record);
+        console.error('❌ [FRONTEND-FINANCIAL] Detalles del error:', {
+          message: error.message,
+          status: error.status,
+          statusText: error.statusText,
+          response: error.response,
+          data: error.response?.data
+        });
         // Continuar con el siguiente registro
       }
     }
 
     console.log(`✅ [FRONTEND-FINANCIAL] ${savedRecords.length} registros guardados exitosamente`);
+    console.log(`✅ [FRONTEND-FINANCIAL] Registros guardados:`, JSON.stringify(savedRecords, null, 2));
     return savedRecords;
   }
 }
